@@ -3,22 +3,36 @@
 
 #include <opencv2/opencv.hpp>
 
+enum Zone
+{
+    TOP_LEFT,
+    TOP_RIGHT,
+    BOTTOM_LEFT,
+    BOTTOM_RIGHT
+};
+
 class Box
 {
 private:
-    cv::Point topLeft;
-    cv::Point bottomRight;
-    cv::Point barycentre;
+    cv::Point barycenter;
+    cv::Size boxSize;
+    cv::Point2f velocity;
+    cv::Point destination;
+    cv::Point pos;
+    Zone zone;
 
 public:
     Box();
-    Box(cv::Point topLeft, cv::Point bottomRight);
+    Box(cv::Point barycenter, cv::Size boxSize);
     ~Box();
 
-    void setCoordinates(cv::Point topLeft, cv::Point bottomRight);
+    void setCoordinates(cv::Point barycenter);
     cv::Point getTopLeft();
     cv::Point getBottomRight();
-    void calcBarycentre();
+    void updatePosition();
+    void setDestination(cv::Point dest);
+    void setVelocity(cv::Point2f vel);
+    void setZone(Zone zone);
 };
 
 Box::Box() {}
@@ -34,9 +48,10 @@ public:
     BoxManager();
     BoxManager(cv::Size imageSize, int randomSeed);
     ~BoxManager();
-    void generateRandomTrajectory();
+    cv::Point genRandomDestination();
     Box generateRandomBox();
     Box getBox();
+    void drawBox();
 };
 
 BoxManager::BoxManager() {}
