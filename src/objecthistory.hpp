@@ -6,24 +6,30 @@
 
 class ObjectHistory
 {
+	typedef std::queue<detectionprops> dethist;
+
 protected:
 	static int nextid;
 
 private:
-	std::queue<detectionprops> history;
-	std::queue<detectionprops> predictedHistory;
+	dethist history;
+	dethist predictedHistory;
 	int size;
 	bool confirmed;
 	bool validatd;
+	bool updated;
 
 public:
 	int id;
-	ObjectHistory(int maxSiz);
+	ObjectHistory(int maxSize);
 	~ObjectHistory();
 	void add(detectionprops det);
 	int getSize();
 	void setSize(int size);
-	void predict(KalmanWrapper *predictor);
+	detectionprops predict(KalmanWrapper *predictor);
+	void update(KalmanWrapper *predictor);
+	dethist getHistory();
+	void showHistory();
 };
 
 #endif

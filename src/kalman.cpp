@@ -6,6 +6,8 @@ KalmanWrapper::KalmanWrapper(int dynamParams, int measureParams, int controlPara
 	kf.init(dynamParams, measureParams, controlParams);
 }
 
+KalmanWrapper::KalmanWrapper() {}
+
 KalmanWrapper::~KalmanWrapper()
 {
 }
@@ -37,6 +39,12 @@ const Mat &KalmanWrapper::predict()
 {
 	std::cout << "Made a prediction" << std::endl;
 	return kf.predict();
+}
+
+void KalmanWrapper::update(detectionprops det)
+{
+	Mat measurement = (Mat_<float>(4, 1) << det.barycenter.x, det.barycenter.y, det.height, det.width);
+	kf.correct(measurement);
 }
 
 MatManager::MatManager(/* args */)

@@ -2,6 +2,7 @@
 #define KALMAN_HPP
 #include <opencv2/video/tracking.hpp>
 #include <iostream>
+#include "detection.hpp"
 
 using namespace cv;
 
@@ -21,7 +22,9 @@ private:
 
 public:
 	KalmanWrapper(int dynamParams, int measureParams, int controlParams);
+	KalmanWrapper();
 	const Mat &predict();
+	void update(detectionprops detection);
 	~KalmanWrapper();
 	void load(kalmanConfig config);
 	void init(Mat initialEstimateUncertainty);

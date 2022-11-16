@@ -117,6 +117,32 @@ depend:
 .PHONY : depend
 
 #=============================================================================
+# Target rules for targets named kalman
+
+# Build rule for target.
+kalman: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 kalman
+.PHONY : kalman
+
+# fast build rule for target.
+kalman/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kalman.dir/build.make CMakeFiles/kalman.dir/build
+.PHONY : kalman/fast
+
+#=============================================================================
+# Target rules for targets named objecthistory
+
+# Build rule for target.
+objecthistory: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 objecthistory
+.PHONY : objecthistory
+
+# fast build rule for target.
+objecthistory/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/objecthistory.dir/build.make CMakeFiles/objecthistory.dir/build
+.PHONY : objecthistory/fast
+
+#=============================================================================
 # Target rules for targets named app
 
 # Build rule for target.
@@ -128,6 +154,67 @@ app: cmake_check_build_system
 app/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/app.dir/build.make CMakeFiles/app.dir/build
 .PHONY : app/fast
+
+#=============================================================================
+# Target rules for targets named genboxes
+
+# Build rule for target.
+genboxes: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 genboxes
+.PHONY : genboxes
+
+# fast build rule for target.
+genboxes/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/genboxes.dir/build.make CMakeFiles/genboxes.dir/build
+.PHONY : genboxes/fast
+
+src/genboxes.o: src/genboxes.cpp.o
+.PHONY : src/genboxes.o
+
+# target to build an object file
+src/genboxes.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/genboxes.dir/build.make CMakeFiles/genboxes.dir/src/genboxes.cpp.o
+.PHONY : src/genboxes.cpp.o
+
+src/genboxes.i: src/genboxes.cpp.i
+.PHONY : src/genboxes.i
+
+# target to preprocess a source file
+src/genboxes.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/genboxes.dir/build.make CMakeFiles/genboxes.dir/src/genboxes.cpp.i
+.PHONY : src/genboxes.cpp.i
+
+src/genboxes.s: src/genboxes.cpp.s
+.PHONY : src/genboxes.s
+
+# target to generate assembly for a file
+src/genboxes.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/genboxes.dir/build.make CMakeFiles/genboxes.dir/src/genboxes.cpp.s
+.PHONY : src/genboxes.cpp.s
+
+src/kalman.o: src/kalman.cpp.o
+.PHONY : src/kalman.o
+
+# target to build an object file
+src/kalman.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kalman.dir/build.make CMakeFiles/kalman.dir/src/kalman.cpp.o
+.PHONY : src/kalman.cpp.o
+
+src/kalman.i: src/kalman.cpp.i
+.PHONY : src/kalman.i
+
+# target to preprocess a source file
+src/kalman.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kalman.dir/build.make CMakeFiles/kalman.dir/src/kalman.cpp.i
+.PHONY : src/kalman.cpp.i
+
+src/kalman.s: src/kalman.cpp.s
+.PHONY : src/kalman.s
+
+# target to generate assembly for a file
+src/kalman.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kalman.dir/build.make CMakeFiles/kalman.dir/src/kalman.cpp.s
+.PHONY : src/kalman.cpp.s
 
 src/main.o: src/main.cpp.o
 .PHONY : src/main.o
@@ -153,6 +240,30 @@ src/main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/app.dir/build.make CMakeFiles/app.dir/src/main.cpp.s
 .PHONY : src/main.cpp.s
 
+src/objecthistory.o: src/objecthistory.cpp.o
+.PHONY : src/objecthistory.o
+
+# target to build an object file
+src/objecthistory.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/objecthistory.dir/build.make CMakeFiles/objecthistory.dir/src/objecthistory.cpp.o
+.PHONY : src/objecthistory.cpp.o
+
+src/objecthistory.i: src/objecthistory.cpp.i
+.PHONY : src/objecthistory.i
+
+# target to preprocess a source file
+src/objecthistory.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/objecthistory.dir/build.make CMakeFiles/objecthistory.dir/src/objecthistory.cpp.i
+.PHONY : src/objecthistory.cpp.i
+
+src/objecthistory.s: src/objecthistory.cpp.s
+.PHONY : src/objecthistory.s
+
+# target to generate assembly for a file
+src/objecthistory.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/objecthistory.dir/build.make CMakeFiles/objecthistory.dir/src/objecthistory.cpp.s
+.PHONY : src/objecthistory.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -162,9 +273,21 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... app"
+	@echo "... genboxes"
+	@echo "... kalman"
+	@echo "... objecthistory"
+	@echo "... src/genboxes.o"
+	@echo "... src/genboxes.i"
+	@echo "... src/genboxes.s"
+	@echo "... src/kalman.o"
+	@echo "... src/kalman.i"
+	@echo "... src/kalman.s"
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"
+	@echo "... src/objecthistory.o"
+	@echo "... src/objecthistory.i"
+	@echo "... src/objecthistory.s"
 .PHONY : help
 
 
