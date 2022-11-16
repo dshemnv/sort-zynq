@@ -18,7 +18,6 @@ private:
     cv::Size boxSize;
     cv::Point2f velocity;
     cv::Point destination;
-    cv::Point pos;
     Zone zone;
 
 public:
@@ -27,11 +26,13 @@ public:
     ~Box();
 
     void setCoordinates(cv::Point barycenter);
+    void setDestination(cv::Point dest);
     cv::Point getTopLeft();
     cv::Point getBottomRight();
     void updatePosition();
-    void setDestination(cv::Point dest);
     void setVelocity(cv::Point2f vel);
+    cv::Point2f getVelocity();
+    cv::Point getDestination();
     void setZone(Zone zone);
 };
 

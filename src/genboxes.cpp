@@ -6,8 +6,6 @@
 using namespace cv;
 Box::Box(Point barycenter, Size boxSize) : barycenter(barycenter), boxSize(boxSize)
 {
-	pos.x = 0;
-	pos.y = 0;
 }
 
 Box::~Box() {}
@@ -15,6 +13,11 @@ Box::~Box() {}
 void Box::setVelocity(Point2f vel)
 {
 	velocity = vel;
+}
+
+Point2f Box::getVelocity()
+{
+	return velocity;
 }
 
 void Box::setZone(Zone zone)
@@ -25,6 +28,11 @@ void Box::setZone(Zone zone)
 void Box::setDestination(Point dest)
 {
 	destination = dest;
+}
+
+Point Box::getDestination()
+{
+	return destination;
 }
 
 Point Box::getTopLeft()
@@ -45,6 +53,33 @@ Point Box::getBottomRight()
 
 void Box::updatePosition()
 {
+	std::cout << "Prev bar " << barycenter << std::endl;
+	std::cout << "Destination " << destination << std::endl;
+	if (barycenter.x != destination.x)
+	{
+		barycenter.x += (int)(velocity.x * destination.x);
+		if (barycenter.y < destination.y)
+		{
+			barycenter.y += (int)(velocity.y * destination.y);
+		}
+		else
+		{
+			barycenter.y -= (int)(velocity.y * destination.y);
+		}
+	}
+	else
+	{
+		barycenter.x -= (int)(velocity.x * destination.x);
+		if (barycenter.y < destination.y)
+		{
+			barycenter.y += (int)(velocity.y * destination.y);
+		}
+		else
+		{
+			barycenter.y -= (int)(velocity.y * destination.y);
+		}
+	}
+	std::cout << "New bar " << barycenter << std::endl;
 }
 
 BoxManager::BoxManager(Size imageSize, int randomSeed) : randomSeed(randomSeed), imageSize(imageSize)
@@ -119,24 +154,26 @@ Point BoxManager::genRandomDestination()
 {
 	Point dest;
 
-	dest.x = std::rand() % static_cast<int>(imageSize.width - 10);
-	dest.y = std::rand() % static_cast<int>(imageSize.height - 10);
-
+	dest.x = std::rand() % (imageSize.width - 10);
+	dest.y = std::rand() % (imageSize.height - 10);
+	std::cout << dest << std::endl;
 	return dest;
 }
 
 void BoxManager::drawBox()
 {
 	box.setVelocity(Point_<float>(0.3, 0.3));
-	box.setDestination(genRandomDestination());
 	namedWindow("Output");
+	box = generateRandomBox();
 
+	box.setDestination(Point_<int>(120, 50));
 	char code;
 	for (;;)
 	{
-		box = generateRandomBox();
+		Point dest = box.getDestination();
+		std::cout << "Dest in loop " << dest << std::endl;
 		Mat canvas = Mat::zeros(imageSize, CV_8UC3);
-		// box.updatePosition();
+		box.updatePosition();
 		rectangle(canvas, box.getTopLeft(), box.getBottomRight(), Scalar(0, 0, 255), 1, LINE_4);
 		// rectangle(canvas, Point(10, 10), Point(30, 30), Scalar(0, 0, 255), 1, LINE_4);
 		imshow("Output", canvas);
