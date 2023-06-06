@@ -1,17 +1,16 @@
-#include <cstdio>
-#include <iostream>
+#include "detection.hpp"
 #include "kalman.hpp"
 #include "objecthistory.hpp"
-#include "detection.hpp"
+#include <cstdio>
+#include <iostream>
 using namespace cv;
 
-void kalmanInit(float dt, KalmanWrapper *predictor)
-{
+void kalmanInit(float dt, KalmanWrapper *predictor) {
     kalmanConfig config;
 
-    config.F = Mat::eye(Size(8, 8), CV_32F); // F
-    config.F.at<float>(1) = dt;
-    config.F.at<float>(2) = 0.5f * dt * dt;
+    config.F               = Mat::eye(Size(8, 8), CV_32F); // F
+    config.F.at<float>(1)  = dt;
+    config.F.at<float>(2)  = 0.5f * dt * dt;
     config.F.at<float>(10) = dt;
     config.F.at<float>(28) = dt;
     config.F.at<float>(29) = 0.5f * dt * dt;
@@ -19,11 +18,12 @@ void kalmanInit(float dt, KalmanWrapper *predictor)
 
     config.Q = 0.09f * Mat::eye(Size(8, 8), CV_32F); // Q
     config.R = 0.1f * Mat::eye(Size(4, 4), CV_32F);  // R
-
+    // clang-format off
     config.H = (Mat_<float>(4, 8) << 1, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 1, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 1, 0,
-                0, 0, 0, 0, 0, 0, 0, 1); // H
+                                    0, 0, 0, 1, 0, 0, 0, 0,
+                                    0, 0, 0, 0, 0, 0, 1, 0,
+                                    0, 0, 0, 0, 0, 0, 0, 1); // H
+    // clang-format on
 
     Mat P = Mat::eye(Size(8, 8), CV_32F) * 80;
 
@@ -31,26 +31,17 @@ void kalmanInit(float dt, KalmanWrapper *predictor)
     predictor->load(config);
 }
 
-int main(int argc, char const *argv[])
-{
+int main(int argc, char const *argv[]) {
     KalmanWrapper *pred_ptr;
     ObjectHistory *oh;
     detectionprops det1 = {
-        2,
-        4,
-        Point_<float>(2.1f, 2.3f),
-        "label1",
-        0.87,
+        2, 4, Point_<float>(2.1f, 2.3f), "label1", 0.87,
     };
     detectionprops det2 = {
-        5,
-        10,
-        Point_<float>(5.9f, 2.3f),
-        "label2",
-        0.63,
+        5, 10, Point_<float>(5.9f, 2.3f), "label2", 0.63,
     };
     pred_ptr = new KalmanWrapper(8, 4, 0);
-    oh = new ObjectHistory(5);
+    oh       = new ObjectHistory(5);
     kalmanInit(0.01, pred_ptr);
     oh->add(det1);
     oh->add(det2);

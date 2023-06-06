@@ -3,24 +3,17 @@
 
 #include <opencv2/opencv.hpp>
 
-enum Zone
-{
-    TOP_LEFT,
-    TOP_RIGHT,
-    BOTTOM_LEFT,
-    BOTTOM_RIGHT
-};
+enum Zone { TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT };
 
-class Box
-{
-private:
+class Box {
+  private:
     cv::Point barycenter;
     cv::Size boxSize;
     cv::Point2f velocity;
     cv::Point destination;
     Zone zone;
 
-public:
+  public:
     Box();
     Box(cv::Point barycenter, cv::Size boxSize);
     ~Box();
@@ -34,18 +27,18 @@ public:
     cv::Point2f getVelocity();
     cv::Point getDestination();
     void setZone(Zone zone);
+    Zone getZone();
 };
 
 Box::Box() {}
 
-class BoxManager
-{
-private:
+class BoxManager {
+  private:
     Box box;
     cv::Size imageSize;
     int randomSeed;
 
-public:
+  public:
     BoxManager();
     BoxManager(cv::Size imageSize, int randomSeed);
     ~BoxManager();
@@ -53,6 +46,7 @@ public:
     Box generateRandomBox();
     Box getBox();
     void drawBox();
+    bool boxInCanvas(Box &box);
 };
 
 BoxManager::BoxManager() {}
