@@ -11,7 +11,8 @@ class Box {
     cv::Size boxSize;
     cv::Point2f velocity;
     cv::Point destination;
-    Zone zone;
+    Zone currentZone;
+    Zone destinationZone;
 
   public:
     Box();
@@ -19,15 +20,19 @@ class Box {
     ~Box();
 
     void setCoordinates(cv::Point barycenter);
+    cv::Point getCoordinates();
     void setDestination(cv::Point dest);
     cv::Point getTopLeft();
     cv::Point getBottomRight();
-    void updatePosition();
+    void move();
     void setVelocity(cv::Point2f vel);
     cv::Point2f getVelocity();
     cv::Point getDestination();
     void setZone(Zone zone);
     Zone getZone();
+    Zone getDestinationZone();
+    void setDestinationZone(Zone destZone);
+    bool boxInZone(Zone zone);
 };
 
 Box::Box() {}
@@ -43,10 +48,13 @@ class BoxManager {
     BoxManager(cv::Size imageSize, int randomSeed);
     ~BoxManager();
     cv::Point genRandomDestination();
+    cv::Point genRandomDestination(const Zone zone);
     Box generateRandomBox();
     Box getBox();
     void drawBox();
     bool boxInCanvas(Box &box);
+    void updateBoxPosition(Box &box);
+    void setZone(Box &box);
 };
 
 BoxManager::BoxManager() {}

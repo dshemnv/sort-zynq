@@ -13,13 +13,19 @@ void Box::setVelocity(Point2f vel) { velocity = vel; }
 
 Point2f Box::getVelocity() { return velocity; }
 
-void Box::setZone(Zone zone) { this->zone = zone; }
+void Box::setZone(Zone zone) { currentZone = zone; }
+Zone Box::getZone() { return currentZone; }
+bool Box::boxInZone(Zone zone) {
+    return (zone == destinationZone ? true : false);
+}
 
-Zone Box::getZone() { return zone; }
+void Box::setDestinationZone(Zone zone) { destinationZone = zone; }
+Zone Box::getDestinationZone() { return destinationZone; }
 
 void Box::setDestination(Point dest) { destination = dest; }
 
 Point Box::getDestination() { return destination; }
+Point Box::getCoordinates() { return barycenter; }
 
 Point Box::getTopLeft() {
     Point topLeft;
@@ -35,25 +41,25 @@ Point Box::getBottomRight() {
     return bottomRight;
 }
 
-void Box::updatePosition() {
-    std::cout << "Prev bar " << barycenter << std::endl;
-    std::cout << "Destination " << destination << std::endl;
-    if (barycenter.x != destination.x) {
-        barycenter.x += (int)(velocity.x * destination.x);
-        if (barycenter.y < destination.y) {
-            barycenter.y += (int)(velocity.y * destination.y);
-        } else {
-            barycenter.y -= (int)(velocity.y * destination.y);
-        }
-    } else {
-        barycenter.x -= (int)(velocity.x * destination.x);
-        if (barycenter.y < destination.y) {
-            barycenter.y += (int)(velocity.y * destination.y);
-        } else {
-            barycenter.y -= (int)(velocity.y * destination.y);
-        }
+void Box::move() {
+    if (destination.x < barycenter.x) {
+        barycenter.x -= velocity.x * barycenter.x;
+        barycenter.x =
+            barycenter.x < destination.x ? destination.x : barycenter.x;
+    } else if (destination.x > barycenter.x) {
+        barycenter.x += velocity.x * barycenter.x;
+        barycenter.x =
+            barycenter.x > destination.x ? destination.x : barycenter.x;
     }
-    std::cout << "New bar " << barycenter << std::endl;
+    if (destination.y < barycenter.y) {
+        barycenter.y -= velocity.y * barycenter.y;
+        barycenter.y =
+            barycenter.y < destination.y ? destination.y : barycenter.y;
+    } else if (destination.y > barycenter.y) {
+        barycenter.y += velocity.y * barycenter.y;
+        barycenter.y =
+            barycenter.y > destination.y ? destination.y : barycenter.y;
+    }
 }
 
 BoxManager::BoxManager(Size imageSize, int randomSeed)
@@ -115,7 +121,32 @@ Point BoxManager::genRandomDestination() {
 
     dest.x = std::rand() % (imageSize.width - 10);
     dest.y = std::rand() % (imageSize.height - 10);
-    std::cout << dest << std::endl;
+    return dest;
+}
+
+Point BoxManager::genRandomDestination(const Zone zone) {
+    Point dest;
+
+    switch (zone) {
+    case TOP_LEFT:
+        dest.x = std::rand() % (imageSize.width / 2);
+        dest.y = std::rand() % (imageSize.height / 2);
+        break;
+    case TOP_RIGHT:
+        dest.x = std::rand() % (imageSize.width / 2) + (imageSize.width / 2);
+        dest.y = std::rand() % (imageSize.height / 2);
+        break;
+    case BOTTOM_LEFT:
+        dest.x = std::rand() % (imageSize.width / 2);
+        dest.y = std::rand() % (imageSize.height / 2) + (imageSize.height / 2);
+        break;
+    case BOTTOM_RIGHT:
+        dest.x = std::rand() % (imageSize.width / 2) + (imageSize.width) / 2;
+        dest.y = std::rand() % (imageSize.height / 2) + (imageSize.height / 2);
+        break;
+    default:
+        break;
+    }
     return dest;
 }
 
@@ -132,28 +163,78 @@ bool BoxManager::boxInCanvas(Box &box) {
 }
 
 void BoxManager::drawBox() {
-    Point2f vel(0.03, 0.03);
+    Point2f vel(0.1, 0.1);
     namedWindow("Output");
     box = generateRandomBox();
+    updateBoxPosition(box);
 
-    box.setDestination(Point_<int>(120, 50));
     box.setVelocity(vel);
+    setZone(box);
+
     char code;
-    while (boxInCanvas(box)) {
-        Point dest = box.getDestination();
-        std::cout << "Dest in loop " << dest << std::endl;
+    int inZone = 0;
+    while (true) {
+        if (box.boxInZone(box.getDestinationZone())) {
+            inZone += 1;
+        }
+        setZone(box);
+        if ((!boxInCanvas(box)) ||
+            (box.getCoordinates() == box.getDestination()) || (inZone == 30)) {
+            updateBoxPosition(box);
+            inZone = 0;
+        }
+        box.move();
         Mat canvas = Mat::zeros(imageSize, CV_8UC3);
-        box.updatePosition();
         rectangle(canvas, box.getTopLeft(), box.getBottomRight(),
                   Scalar(0, 0, 255), 1, LINE_4);
-        // rectangle(canvas, Point(10, 10), Point(30, 30), Scalar(0, 0, 255), 1,
-        // LINE_4);
+        circle(canvas, box.getDestination(), 5, Scalar(255, 200, 0), 1);
+        // rectangle(canvas, Point(10, 10), Point(30, 30), Scalar(0, 0,
+        // 255), 1, LINE_4);
         imshow("Output", canvas);
         code = (char)waitKey(100);
         if (code == 'q' || code == 'Q' || code == 27) {
             break;
         }
     }
+}
+
+void BoxManager::setZone(Box &box) {
+    Point currentLocation = box.getCoordinates();
+
+    int dw = imageSize.width - currentLocation.x;
+    int dh = imageSize.height - currentLocation.y;
+
+    if (std::min(dw, currentLocation.x) == dw) {
+        if (std::min(dh, currentLocation.y) == dh) {
+            box.setZone(BOTTOM_RIGHT);
+        } else {
+            box.setZone(TOP_RIGHT);
+        }
+    } else {
+        if (std::min(dh, currentLocation.y) == dh) {
+            box.setZone(BOTTOM_LEFT);
+        } else {
+            box.setZone(TOP_LEFT);
+        }
+    }
+}
+
+void BoxManager::updateBoxPosition(Box &box) {
+    std::vector<Zone> possibleDirections({Zone::TOP_LEFT, Zone::TOP_RIGHT,
+                                          Zone::BOTTOM_LEFT,
+                                          Zone::BOTTOM_RIGHT});
+
+    std::remove(possibleDirections.begin(), possibleDirections.end(),
+                box.getZone());
+
+    // Get a random new direction
+    const Zone direction =
+        possibleDirections[std::rand() % possibleDirections.size()];
+
+    // Get a random new destination in zone
+    const Point dest = genRandomDestination(direction);
+    box.setDestinationZone(direction);
+    box.setDestination(dest);
 }
 
 int main(int argc, char const *argv[]) {
