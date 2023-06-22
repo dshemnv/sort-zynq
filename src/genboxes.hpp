@@ -22,6 +22,7 @@ class Box {
 
     void setCoordinates(cv::Point barycenter);
     cv::Point getCoordinates();
+    cv::Size getBoxMeasures();
     void setDestination(cv::Point dest);
     cv::Point getTopLeft();
     cv::Point getBottomRight();
@@ -36,8 +37,6 @@ class Box {
     bool boxInZone(Zone zone);
     bool isBlocked();
 };
-
-Box::Box() {}
 
 class BoxManager {
   private:
@@ -56,14 +55,12 @@ class BoxManager {
     Box generateRandomBox();
     std::vector<Box> getBoxes();
     void addBox(Box box);
-    void drawBox(Box &box);
+    void drawBox(Box &box, cv::Scalar color);
     bool boxInCanvas(Box &box);
     void updateBoxPosition(Box &box);
     void setZone(Box &box);
     void show();
     void cleanCanvas();
 };
-
-BoxManager::BoxManager() {}
 
 #endif

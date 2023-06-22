@@ -6,3 +6,17 @@ void printDetection(detectionprops det) {
            det.barycenter.x, det.barycenter.y, det.height, det.width, det.label,
            det.probability);
 }
+
+detectionprops detpropFromBox(Box &box, const char *label, float probability) {
+    detectionprops detprop = {.barycenter  = box.getCoordinates(),
+                              .height      = box.getBoxMeasures().height,
+                              .width       = box.getBoxMeasures().width,
+                              .label       = label,
+                              .probability = probability};
+
+    return detprop;
+}
+
+Box boxFromDetprop(detectionprops &detprop) {
+    return Box(detprop.barycenter, cv::Size(detprop.height, detprop.width));
+}

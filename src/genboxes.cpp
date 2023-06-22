@@ -1,10 +1,10 @@
-#include "genboxes.hpp"
 #include "kalman.hpp"
 #include <cstdlib>
 #include <stdio.h>
 #include <unistd.h>
 
 using namespace cv;
+Box::Box() {}
 Box::Box(Point barycenter, Size boxSize)
     : barycenter(barycenter), boxSize(boxSize), blocked(false) {}
 
@@ -23,6 +23,12 @@ bool Box::boxInZone(Zone zone) {
 
 void Box::setDestinationZone(Zone zone) { destinationZone = zone; }
 Zone Box::getDestinationZone() { return destinationZone; }
+
+Size Box::getBoxMeasures() {
+    Point tl = getTopLeft();
+    Point br = getBottomRight();
+    return Size(br.y - tl.y, br.x - tl.x);
+}
 
 void Box::setDestination(Point dest) { destination = dest; }
 
@@ -72,6 +78,7 @@ void Box::move() {
     }
 }
 
+BoxManager::BoxManager() {}
 BoxManager::BoxManager(Size imageSize, int randomSeed)
     : randomSeed(randomSeed), imageSize(imageSize) {
     namedWindow("Output");
@@ -179,16 +186,14 @@ bool BoxManager::boxInCanvas(Box &box) {
     return true;
 }
 
-void BoxManager::drawBox(Box &box) {
+void BoxManager::drawBox(Box &box, Scalar color) {
     setZone(box);
     if (box.isBlocked() || !boxInCanvas(box) ||
         box.getCoordinates() == box.getDestination()) {
         updateBoxPosition(box);
     }
     box.move();
-    rectangle(canvas, box.getTopLeft(), box.getBottomRight(), Scalar(0, 0, 255),
-              1, LINE_4);
-    circle(canvas, box.getDestination(), 5, Scalar(255, 200, 0), 1);
+    rectangle(canvas, box.getTopLeft(), box.getBottomRight(), color, 1, LINE_4);
 }
 
 void BoxManager::setZone(Box &box) {
@@ -230,26 +235,26 @@ void BoxManager::updateBoxPosition(Box &box) {
     box.setDestination(dest);
 }
 
-int main(int argc, char const *argv[]) {
-    srand(time(NULL));
-    Size canvasSize = Size(640, 480);
-    BoxManager boxm = BoxManager(canvasSize, 4);
+// int main(int argc, char const *argv[]) {
+//     srand(time(NULL));
+//     Size canvasSize = Size(640, 480);
+//     BoxManager boxm = BoxManager(canvasSize, 4);
 
-    Box box1 = boxm.generateRandomBox();
-    box1.setVelocity(Point2f(13, 13));
+//     Box box1 = boxm.generateRandomBox();
+//     box1.setVelocity(Point2f(13, 13));
 
-    Box box2 = boxm.generateRandomBox();
-    box2.setVelocity(Point2f(13, 13));
-    while (true) {
-        boxm.cleanCanvas();
-        boxm.drawBox(box1);
-        boxm.drawBox(box2);
-        boxm.show();
-        char code = (char)waitKey(50);
-        if (code == 'q' || code == 'Q' || code == 27) {
-            break;
-        }
-    }
+//     Box box2 = boxm.generateRandomBox();
+//     box2.setVelocity(Point2f(13, 13));
+//     while (true) {
+//         boxm.cleanCanvas();
+//         boxm.drawBox(box1);
+//         boxm.drawBox(box2);
+//         boxm.show();
+//         char code = (char)waitKey(50);
+//         if (code == 'q' || code == 'Q' || code == 27) {
+//             break;
+//         }
+//     }
 
-    return 0;
-}
+//     return 0;
+// }

@@ -1,4 +1,5 @@
 #include "detection.hpp"
+#include "genboxes.hpp"
 #include "kalman.hpp"
 #include "objecthistory.hpp"
 #include <cstdio>
@@ -20,12 +21,12 @@ void kalmanInit(float dt, KalmanWrapper *predictor) {
     config.R = 0.1f * Mat::eye(Size(4, 4), CV_32F);  // R
     // clang-format off
     config.H = (Mat_<float>(4, 8) << 1, 0, 0, 0, 0, 0, 0, 0,
-                                    0, 0, 0, 1, 0, 0, 0, 0,
-                                    0, 0, 0, 0, 0, 0, 1, 0,
-                                    0, 0, 0, 0, 0, 0, 0, 1); // H
+                                     0, 0, 0, 1, 0, 0, 0, 0,
+                                     0, 0, 0, 0, 0, 0, 1, 0,
+                                     0, 0, 0, 0, 0, 0, 0, 1); // H
     // clang-format on
 
-    Mat P = Mat::eye(Size(8, 8), CV_32F) * 80;
+    Mat P = Mat::eye(Size(8, 8), CV_32F) * 80; // P
 
     predictor->init(P);
     predictor->load(config);
@@ -33,25 +34,34 @@ void kalmanInit(float dt, KalmanWrapper *predictor) {
 
 int main(int argc, char const *argv[]) {
     KalmanWrapper *pred_ptr;
-    ObjectHistory *oh;
-    detectionprops det1 = {
-        2, 4, Point_<float>(2.1f, 2.3f), "label1", 0.87,
-    };
-    detectionprops det2 = {
-        5, 10, Point_<float>(5.9f, 2.3f), "label2", 0.63,
-    };
+
     pred_ptr = new KalmanWrapper(8, 4, 0);
-    oh       = new ObjectHistory(5);
+    ObjectHistory oh(5);
     kalmanInit(0.01, pred_ptr);
-    oh->add(det1);
-    oh->add(det2);
-    oh->showHistory();
 
-    oh->update(pred_ptr);
-    detectionprops out = oh->predict(pred_ptr);
-    printDetection(out);
+    srand(time(NULL));
+    Size canvasSize = Size(640, 480);
+    BoxManager boxm = BoxManager(canvasSize, 4);
 
-    delete oh;
+    Box box1 = boxm.generateRandomBox();
+    box1.setVelocity(Point2f(13, 13));
+
+    while (true) {
+        oh.add(detpropFromBox(box1, "label", 0.9));
+        oh.update(pred_ptr);
+        detectionprops det1_pred = oh.predict(pred_ptr);
+        Box box1_pred            = boxFromDetprop(det1_pred);
+
+        boxm.cleanCanvas();
+        boxm.drawBox(box1, Scalar(0, 0, 255));
+        boxm.drawBox(box1_pred, Scalar(0, 255, 0));
+        boxm.show();
+        char code = (char)waitKey(50);
+        if (code == 'q' || code == 'Q' || code == 27) {
+            break;
+        }
+    }
+
     delete pred_ptr;
     return 0;
 }

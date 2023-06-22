@@ -23,9 +23,9 @@ detectionprops ObjectHistory::predict(KalmanWrapper *predictor) {
         Point2f(prediction.at<float>(0, 0), prediction.at<float>(3, 0));
     last = history.back();
 
-    detectionprops output = {prediction.at<float>(6, 0),
-                             prediction.at<float>(7, 0), barycenter, last.label,
-                             last.probability};
+    detectionprops output = {static_cast<int>(prediction.at<float>(6, 0)),
+                             static_cast<int>(prediction.at<float>(7, 0)),
+                             barycenter, last.label, last.probability};
 
     return output;
 }

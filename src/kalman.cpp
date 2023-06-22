@@ -31,7 +31,7 @@ kalmanConfig KalmanWrapper::dump() {
 }
 
 const Mat &KalmanWrapper::predict() {
-    std::cout << "Made a prediction" << std::endl;
+    // std::cout << "Made a prediction" << std::endl;
     return kf.predict();
 }
 
