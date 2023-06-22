@@ -13,6 +13,7 @@ class Box {
     cv::Point destination;
     Zone currentZone;
     Zone destinationZone;
+    bool blocked;
 
   public:
     Box();
@@ -33,15 +34,18 @@ class Box {
     Zone getDestinationZone();
     void setDestinationZone(Zone destZone);
     bool boxInZone(Zone zone);
+    bool isBlocked();
 };
 
 Box::Box() {}
 
 class BoxManager {
   private:
-    Box box;
+    std::vector<Box> boxes;
     cv::Size imageSize;
+    cv::Mat canvas;
     int randomSeed;
+    int refresh_rate;
 
   public:
     BoxManager();
@@ -50,11 +54,14 @@ class BoxManager {
     cv::Point genRandomDestination();
     cv::Point genRandomDestination(const Zone zone);
     Box generateRandomBox();
-    Box getBox();
-    void drawBox();
+    std::vector<Box> getBoxes();
+    void addBox(Box box);
+    void drawBox(Box &box);
     bool boxInCanvas(Box &box);
     void updateBoxPosition(Box &box);
     void setZone(Box &box);
+    void show();
+    void cleanCanvas();
 };
 
 BoxManager::BoxManager() {}
