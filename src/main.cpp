@@ -39,26 +39,57 @@ int main(int argc, char const *argv[]) {
     ObjectHistory oh(5);
     kalmanInit(0.01, pred_ptr);
 
-    srand(time(NULL));
-    Size canvasSize = Size(640, 480);
+    Size canvasSize = Size(900, 900);
     BoxManager boxm = BoxManager(canvasSize, 4);
 
     Box box1 = boxm.generateRandomBox();
-    box1.setVelocity(Point2f(13, 13));
+    box1.setVelocity(Point2f(1, 1));
+
+    bool disapear = false;
+    int duration  = 0;
 
     while (true) {
+        if (std::rand() % 100 == 5) {
+            disapear = true;
+        }
         oh.add(detpropFromBox(box1, "label", 0.9));
-        oh.update(pred_ptr);
+        if (!disapear) {
+            oh.update(pred_ptr);
+        }
         detectionprops det1_pred = oh.predict(pred_ptr);
         Box box1_pred            = boxFromDetprop(det1_pred);
 
         boxm.cleanCanvas();
-        boxm.drawBox(box1, Scalar(0, 0, 255));
-        boxm.drawBox(box1_pred, Scalar(0, 255, 0));
+        Mat normal_canvas = boxm.getCanvas().clone();
+        Size normal_size  = normal_canvas.size();
+        Mat result = Mat::zeros(Size(normal_size.width * 2, normal_size.height),
+                                CV_8UC3);
+        String message;
+        if (disapear) {
+            message = "Predicting";
+            duration++;
+        } else {
+            message = "Updating";
+        }
+        Size txt_size = getTextSize(message, FONT_HERSHEY_SIMPLEX, 1, 1, 0);
+        putText(boxm.getCanvas(), message, Point(0, 0 + txt_size.height),
+                FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 255, 0), 1, 8);
+        boxm.drawBox(box1, Scalar(0, 0, 255), !disapear, boxm.getCanvas());
+        boxm.drawBox(box1, Scalar(0, 0, 255), true, normal_canvas);
+        boxm.drawBox(box1_pred, Scalar(0, 255, 0), disapear, boxm.getCanvas());
+
+        hconcat(boxm.getCanvas(), normal_canvas, result);
+
+        boxm.setCanvas(result);
+
         boxm.show();
-        char code = (char)waitKey(50);
+        char code = (char)waitKey(10);
         if (code == 'q' || code == 'Q' || code == 27) {
             break;
+        }
+        if (duration >= std::rand() % 1000 + 1) {
+            duration = 0;
+            disapear = false;
         }
     }
 

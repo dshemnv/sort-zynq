@@ -55,12 +55,14 @@ class BoxManager {
     Box generateRandomBox();
     std::vector<Box> getBoxes();
     void addBox(Box box);
-    void drawBox(Box &box, cv::Scalar color);
+    void drawBox(Box &box, cv::Scalar color, bool draw, cv::Mat canvas);
     bool boxInCanvas(Box &box);
     void updateBoxPosition(Box &box);
     void setZone(Box &box);
     void show();
     void cleanCanvas();
+    cv::Mat getCanvas();
+    void setCanvas(cv::Mat canvas);
 };
 
 #endif

@@ -81,6 +81,7 @@ void Box::move() {
 BoxManager::BoxManager() {}
 BoxManager::BoxManager(Size imageSize, int randomSeed)
     : randomSeed(randomSeed), imageSize(imageSize) {
+    srand(randomSeed);
     namedWindow("Output");
     canvas = Mat::zeros(imageSize, CV_8UC3);
 }
@@ -90,6 +91,10 @@ BoxManager::~BoxManager() {}
 std::vector<Box> BoxManager::getBoxes() { return boxes; }
 
 void BoxManager::addBox(Box box) { boxes.push_back(box); }
+
+Mat BoxManager::getCanvas() { return canvas; }
+
+void BoxManager::setCanvas(Mat canvas) { this->canvas = canvas; }
 
 void BoxManager::show() { imshow("Output", canvas); }
 
@@ -186,14 +191,17 @@ bool BoxManager::boxInCanvas(Box &box) {
     return true;
 }
 
-void BoxManager::drawBox(Box &box, Scalar color) {
+void BoxManager::drawBox(Box &box, Scalar color, bool draw, Mat canvas) {
     setZone(box);
     if (box.isBlocked() || !boxInCanvas(box) ||
         box.getCoordinates() == box.getDestination()) {
         updateBoxPosition(box);
     }
     box.move();
-    rectangle(canvas, box.getTopLeft(), box.getBottomRight(), color, 1, LINE_4);
+    if (draw) {
+        rectangle(canvas, box.getTopLeft(), box.getBottomRight(), color, 1,
+                  LINE_4);
+    }
 }
 
 void BoxManager::setZone(Box &box) {
