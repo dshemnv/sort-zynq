@@ -22,14 +22,14 @@ void decomposeInUDU(const cv::Mat &M, cv::Mat *U, cv::Mat *D) {
     }
 }
 
-void mat2FloatPtr(cv::Mat &mat, float *data_ptr, size_t size) {
+void mat2FloatPtr(cv::Mat &mat, float *data_ptr) {
     cv::Mat tmp1d = mat.reshape(0, 1);
     for (int i = 0; i < tmp1d.cols; i++) {
         data_ptr[i] = tmp1d.at<float>(i);
     }
 }
 
-void floatPtr2Mat(cv::Mat *mat, float *data_ptr, size_t size) {
+void floatPtr2Mat(cv::Mat *mat, float *data_ptr) {
     cv::Size origSize = mat->size();
     mat->reshape(0, 1);
     for (int i = 0; i < origSize.height * origSize.width; i++) {
