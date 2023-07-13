@@ -8,9 +8,9 @@ void printDetection(detectionprops det) {
 }
 
 detectionprops detpropFromBox(Box &box, const char *label, float probability) {
-    detectionprops detprop = {.barycenter  = box.getCoordinates(),
-                              .height      = box.getBoxMeasures().height,
+    detectionprops detprop = {.height      = box.getBoxMeasures().height,
                               .width       = box.getBoxMeasures().width,
+                              .barycenter  = box.getCoordinates(),
                               .label       = label,
                               .probability = probability};
 

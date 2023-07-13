@@ -1,7 +1,11 @@
 #ifndef KALMAN_HPP
 #define KALMAN_HPP
 #include "detection.hpp"
+#include "utils.hpp"
+#ifdef KALMAN_ACCEL
+#include "xcl2.hpp"
 #include "xf_kalmanfilter.hpp"
+#endif
 #include <iostream>
 #include <opencv2/video/tracking.hpp>
 
@@ -13,6 +17,7 @@ typedef struct {
     cv::Mat R; // Measurment uncertainty
 } kalmanConfig;
 
+#ifdef KALMAN_ACCEL
 struct kalmanBuf {
     enum destination { CV_MAT, DATA_PTR };
     cv::Mat cv_mat;
@@ -27,6 +32,7 @@ struct kalmanBuf {
         };
     };
 };
+#endif
 
 class KalmanBase {
   public:
@@ -52,6 +58,7 @@ class KalmanOCV : public KalmanBase {
     kalmanConfig dump();
 };
 
+#ifdef KALMAN_ACCEL
 class KalmanHLS : public KalmanBase {
   private:
     kalmanBuf A;  // Transition matrix
@@ -80,13 +87,15 @@ class KalmanHLS : public KalmanBase {
     };
 
     cl::Kernel kernel;
+    cv_int err;
 
   public:
     KalmanHLS();
     KalmanHLS(int dynamParams, int measureParams, int controlParams);
     ~KalmanHLS();
     void init_accelerator(std::vector<cl::Device> &devices,
-                          cl::Context &context, cl::CommandQueue &queue);
+                          cl::Context &context, cl::CommandQueue &queue,
+                          cl::Event &event);
     void allocateBuffers(cl::Context &context);
     void setKernelArgs();
     void copyDataToDevice(cl::CommandQueue &queue, cl::Event &event);
@@ -98,6 +107,7 @@ class KalmanHLS : public KalmanBase {
     void executeKernel(cl::CommandQueue &queue, const controlFlag &flag);
     kalmanConfig dump();
 };
+#endif
 
 class MatManager {
   private:

@@ -1,10 +1,10 @@
 #include "kalman.hpp"
+#ifdef KALMAN_ACCEL
 #include "common/xf_headers.hpp"
 #include "hls/kalman_hls_accel.hpp"
-#include "utils.hpp"
 #include "xcl2.hpp"
-
-cl_int err;
+#endif
+#include "utils.hpp"
 
 KalmanOCV::KalmanOCV(int dynamParams, int measureParams, int controlParams) {
     kf = cv::KalmanFilter();
@@ -46,8 +46,10 @@ void KalmanOCV::update(detectionprops det) {
     kf.correct(measurement);
 }
 
+#ifdef KALMAN_ACCEL
 KalmanHLS::KalmanHLS() {}
 KalmanHLS::KalmanHLS(int dynamParams, int measureParams, int controlParams) {}
+KalmanHLS::~KalmanHLS() {}
 
 void KalmanHLS::init(cv::Mat initialEstimateUncertainty) {
 
@@ -69,15 +71,16 @@ void KalmanHLS::init(cv::Mat initialEstimateUncertainty) {
 }
 
 void KalmanHLS::init_accelerator(std::vector<cl::Device> &devices,
-                                 cl::Context &context,
-                                 cl::CommandQueue &queue) {
+                                 cl::Context &context, cl::CommandQueue &queue,
+                                 cl::Event &event) {
 
-    std::cout << "[INFO] Accelerator initialization" << std::endl;
+    LOG_INFO("Accelerator initialization");
     cl::Device device = devices[0];
 
     OCL_CHECK(err,
               std::string deviceName = device.getInfo<CL_DEVICE_NAME>(&err));
-    std::cout << "[INFO] Device name: " << deviceName << std::endl;
+
+    LOG_INFO("Device name: " << deviceName);
 
     std::string binaryFile =
         xcl::find_binary_file(deviceName, "krnl_kalmanfilter");
@@ -87,6 +90,18 @@ void KalmanHLS::init_accelerator(std::vector<cl::Device> &devices,
     OCL_CHECK(err, cl::Program program(context, devices, bins, NULL, &err));
 
     OCL_CHECK(err, kernel = cl::Kernel(program, "kalmanfilter_accel", &err));
+
+    LOG_INFO("Allocating buffers");
+    allocateBuffers(context);
+
+    LOG_INFO("Setting Accelerator arguments");
+    setKernelArgs();
+
+    LOG_INFO("Setup initial data to device transfer");
+    copyDataToDevice(queue, event);
+
+    LOG_INFO("Execute accelerator initialization");
+    executeKernel(queue, INIT_EN);
 }
 
 void KalmanHLS::load(kalmanConfig config) {
@@ -209,5 +224,11 @@ void KalmanHLS::executeKernel(cl::CommandQueue &queue,
     OCL_CHECK(err, err = queue.enqueueTask(kernel));
 }
 
+const cv::Mat &KalmanHLS::predict() {}
+
+void KalmanHLS::update(detectionprops detection) {}
+
+kalmanConfig KalmanHLS::dump() {}
+#endif
 MatManager::MatManager(/* args */) {}
 MatManager::~MatManager() {}

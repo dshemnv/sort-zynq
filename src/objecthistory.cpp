@@ -12,15 +12,15 @@ int ObjectHistory::getSize() { return history.size(); }
 
 void ObjectHistory::add(detectionprops det) { history.push(det); }
 
-void ObjectHistory::update(KalmanWrapper *predictor) {
+void ObjectHistory::update(KalmanOCV *predictor) {
     predictor->update(history.back());
 }
 
-detectionprops ObjectHistory::predict(KalmanWrapper *predictor) {
+detectionprops ObjectHistory::predict(KalmanOCV *predictor) {
     detectionprops last;
-    Mat prediction = predictor->predict();
-    Point2f barycenter =
-        Point2f(prediction.at<float>(0, 0), prediction.at<float>(3, 0));
+    cv::Mat prediction = predictor->predict();
+    cv::Point2f barycenter =
+        cv::Point2f(prediction.at<float>(0, 0), prediction.at<float>(3, 0));
     last = history.back();
 
     detectionprops output = {static_cast<int>(prediction.at<float>(6, 0)),
