@@ -5,5 +5,4 @@ cmake_*
 CMakeCache.txt
 lib
 bin
-Makefile
 
