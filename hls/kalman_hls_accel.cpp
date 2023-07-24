@@ -22,10 +22,10 @@ void kalmanfilter_accel(ap_uint<32> *in_A, ap_uint<32> *in_Uq,
                         ap_uint<32> *in_Dq, ap_uint<32> *in_H,
                         ap_uint<32> *in_X0, ap_uint<32> *in_U0,
                         ap_uint<32> *in_D0, ap_uint<32> *in_R,
-                        ap_uint<32> *in_u, ap_uint<32> *in_y,
-                        unsigned char control_flag, ap_uint<32> *out_X,
-                        ap_uint<32> *out_U, ap_uint<32> *out_D) {
-    // clang-format off
+                        ap_uint<32> *in_y, unsigned char control_flag,
+                        ap_uint<32> *out_X, ap_uint<32> *out_U,
+                        ap_uint<32> *out_D) {
+// clang-format off
     #pragma HLS INTERFACE m_axi      port=in_A      offset=slave  bundle=gmem0
     #pragma HLS INTERFACE m_axi      port=in_Uq     offset=slave  bundle=gmem1
     #pragma HLS INTERFACE m_axi      port=in_Dq     offset=slave  bundle=gmem2
@@ -56,7 +56,7 @@ void kalmanfilter_accel(ap_uint<32> *in_A, ap_uint<32> *in_Uq,
     xf::cv::Mat<TYPE, KF_N, KF_N, NPC1> Uout_mat(KF_N, KF_N);
     xf::cv::Mat<TYPE, KF_N, 1, NPC1> Dout_mat(KF_N, 1);
 
-    // clang-format off
+// clang-format off
     #pragma HLS STREAM variable=A_mat.data depth=2
     #pragma HLS STREAM variable=Uq_mat.data depth=2
     #pragma HLS STREAM variable=Dq_mat.data depth=2
@@ -69,9 +69,9 @@ void kalmanfilter_accel(ap_uint<32> *in_A, ap_uint<32> *in_Uq,
     #pragma HLS STREAM variable=Xout_mat.data depth=2
     #pragma HLS STREAM variable=Uout_mat.data depth=2
     #pragma HLS STREAM variable=Dout_mat.data depth=2
-    // clang-format on
+// clang-format on
 
-    // clang-format off
+// clang-format off
     #pragma HLS DATAFLOW
     // clang-format on
 

@@ -17,6 +17,12 @@ typedef struct {
     cv::Mat R; // Measurment uncertainty
 } kalmanConfig;
 
+struct kalmanParams {
+    int dynamParams;
+    int measureParams;
+    int controlParams;
+};
+
 #ifdef KALMAN_ACCEL
 struct kalmanBuf {
     enum destination { CV_MAT, DATA_PTR };
@@ -24,23 +30,32 @@ struct kalmanBuf {
     size_t size;
     cl::Buffer ocl_buffer;
     float *data_ptr;
-    void extactData(destination dest) {
-        if (dest == CV_MAT) {
-            mat2FloatPtr(cv_mat, data_ptr);
-        } else if (dest == DATA_PTR) {
-            floatPtr2Mat(&cv_mat, data_ptr);
+    void extactData(destination dest, bool isdiag = false) {
+        if (dest == DATA_PTR) {
+            mat2FloatPtr(&cv_mat, data_ptr);
+        } else if (dest == CV_MAT) {
+            if (isdiag) {
+                floatPtr2DiagMat(&cv_mat, data_ptr);
+            } else {
+                floatPtr2Mat(&cv_mat, data_ptr);
+            }
         };
     };
 };
 #endif
 
 class KalmanBase {
+  private:
+    kalmanParams params;
+
   public:
     virtual const cv::Mat &predict()                      = 0;
     virtual void update(detectionprops detection)         = 0;
     virtual void load(kalmanConfig config)                = 0;
     virtual void init(cv::Mat initialEstimateUncertainty) = 0;
     virtual kalmanConfig dump()                           = 0;
+    kalmanParams getParams();
+    void setParams(kalmanParams params);
 };
 
 class KalmanOCV : public KalmanBase {
@@ -48,7 +63,7 @@ class KalmanOCV : public KalmanBase {
     cv::KalmanFilter kf;
 
   public:
-    KalmanOCV(int dynamParams, int measureParams, int controlParams);
+    KalmanOCV(kalmanParams params);
     KalmanOCV();
     ~KalmanOCV();
     const cv::Mat &predict();
@@ -75,23 +90,12 @@ class KalmanHLS : public KalmanBase {
     kalmanBuf outU; // Output Error Estimate Covariance matrix, U part
     kalmanBuf outD; // Output Error Estimate Covariance matrix, D part
 
-    enum controlFlag {
-        INIT_EN       = 1,
-        TIMEUPDATE_EN = 2,
-        MEASUPDATE_EN = 4,
-        XOUT_EN_TU    = 8,
-        UDOUT_EN_TU   = 16,
-        XOUT_EN_MU    = 32,
-        UDOUT_EN_MU   = 64,
-        EKF_MEM_OPT   = 128
-    };
-
     cl::Kernel kernel;
-    cv_int err;
 
   public:
+    cl_int err;
     KalmanHLS();
-    KalmanHLS(int dynamParams, int measureParams, int controlParams);
+    KalmanHLS(kalmanParams params);
     ~KalmanHLS();
     void init_accelerator(std::vector<cl::Device> &devices,
                           cl::Context &context, cl::CommandQueue &queue,
@@ -104,7 +108,7 @@ class KalmanHLS : public KalmanBase {
     void update(detectionprops detection);
     void load(kalmanConfig config);
     void init(cv::Mat initialEstimateUncertainty);
-    void executeKernel(cl::CommandQueue &queue, const controlFlag &flag);
+    void executeKernel(cl::CommandQueue &queue, const int &flag);
     kalmanConfig dump();
 };
 #endif

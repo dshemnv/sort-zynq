@@ -5,9 +5,10 @@
 #include <cstdio>
 #include <iostream>
 
-void kalmanInit(float dt, KalmanOCV *predictor) {
+void kalmanInit(float dt, KalmanBase *predictor) {
     kalmanConfig config;
 
+    // TODO: Change F init to be generic.
     config.F               = cv::Mat::eye(8, 8, CV_32F); // F
     config.F.at<float>(1)  = dt;
     config.F.at<float>(2)  = 0.5f * dt * dt;
@@ -16,12 +17,18 @@ void kalmanInit(float dt, KalmanOCV *predictor) {
     config.F.at<float>(29) = 0.5f * dt * dt;
     config.F.at<float>(37) = dt;
 
-    config.Q = 0.09f * cv::Mat::eye(8, 8, CV_32F); // Q
-    config.R = 0.1f * cv::Mat::eye(4, 4, CV_32F);  // R
-    // clang-forcv::Mat off
-    config.H = (cv::Mat_<float>(4, 8) << 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1); // H
-    // clang-forcv::Mat on
+    config.Q =
+        0.09f * cv::Mat::eye(predictor->getParams().dynamParams,
+                             predictor->getParams().measureParams, CV_32F); // Q
+    config.R =
+        0.1f * cv::Mat::eye(predictor->getParams().measureParams,
+                            predictor->getParams().measureParams, CV_32F); // R
+
+    config.H = (cv::Mat_<float>(predictor->getParams().dynamParams,
+                                predictor->getParams().dynamParams)
+                    << 1,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                1, 0, 0, 0, 0, 0, 0, 0, 0, 1); // H
 
     cv::Mat P = cv::Mat::eye(8, 8, CV_32F) * 80; // P
 
@@ -30,68 +37,92 @@ void kalmanInit(float dt, KalmanOCV *predictor) {
 }
 
 int main(int argc, char const *argv[]) {
-    KalmanOCV *pred_ptr;
+    std::cout << "Starting" << std::endl;
+    struct kalmanParams params = {8, 4, 0};
+    KalmanHLS kalm(params);
 
-    pred_ptr = new KalmanOCV(8, 4, 0);
-    ObjectHistory oh(5);
-    kalmanInit(0.01, pred_ptr);
+    std::vector<cl::Device> devices = xcl::get_xil_devices();
+    cl::Device dev                  = devices[0];
+    cl::Event event;
 
-    cv::Size canvasSize(900, 900);
-    BoxManager boxm = BoxManager(canvasSize, 4);
+    OCL_CHECK(kalm.err, cl::Context context(dev, NULL, NULL, NULL, &kalm.err));
+    OCL_CHECK(kalm.err,
+              cl::CommandQueue queue(context, dev, CL_QUEUE_PROFILING_ENABLE,
+                                     &kalm.err));
 
-    Box box1 = boxm.generateRandomBox();
-    box1.setVelocity(cv::Point2f(1, 1));
+    kalmanInit(0.01, &kalm);
 
-    bool disapear = false;
-    int duration  = 0;
+    kalm.init_accelerator(devices, context, queue, event);
 
-    while (true) {
-        if (std::rand() % 100 == 5) {
-            disapear = true;
-        }
-        oh.add(detpropFromBox(box1, "label", 0.9));
-        if (!disapear) {
-            oh.update(pred_ptr);
-        }
-        detectionprops det1_pred = oh.predict(pred_ptr);
-        Box box1_pred            = boxFromDetprop(det1_pred);
+    LOG_INFO("Cleaning queue");
+    queue.finish();
+    std::cout << "Ending" << std::endl;
+    // KalmanOCV *pred_ptr;
 
-        boxm.cleanCanvas();
-        cv::Mat normal_canvas = boxm.getCanvas().clone();
-        cv::Size normal_size  = normal_canvas.size();
-        cv::Mat result        = cv::Mat::zeros(
-            cv::Size(normal_size.width * 2, normal_size.height), CV_8UC3);
-        std::string message;
-        if (disapear) {
-            message = "Predicting";
-            duration++;
-        } else {
-            message = "Updating";
-        }
-        cv::Size txt_size =
-            cv::getTextSize(message, cv::FONT_HERSHEY_SIMPLEX, 1, 1, 0);
-        putText(boxm.getCanvas(), message, cv::Point(0, 0 + txt_size.height),
-                cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 1, 8);
-        boxm.drawBox(box1, cv::Scalar(0, 0, 255), !disapear, boxm.getCanvas());
-        boxm.drawBox(box1, cv::Scalar(0, 0, 255), true, normal_canvas);
-        boxm.drawBox(box1_pred, cv::Scalar(0, 255, 0), disapear,
-                     boxm.getCanvas());
+    // pred_ptr = new KalmanOCV(8, 4, 0);
+    // ObjectHistory oh(5);
+    // kalmanInit(0.01, pred_ptr);
 
-        hconcat(boxm.getCanvas(), normal_canvas, result);
+    // cv::Size canvasSize(900, 900);
+    // BoxManager boxm = BoxManager(canvasSize, 4);
 
-        boxm.setCanvas(result);
+    // Box box1 = boxm.generateRandomBox();
+    // box1.setVelocity(cv::Point2f(1, 1));
 
-        boxm.show();
-        char code = (char)cv::waitKey(10);
-        if (code == 'q' || code == 'Q' || code == 27) {
-            break;
-        }
-        if (duration >= std::rand() % 1000 + 1) {
-            duration = 0;
-            disapear = false;
-        }
-    }
+    // bool disapear = false;
+    // int duration  = 0;
 
-    delete pred_ptr;
+    // while (true) {
+    //     if (std::rand() % 100 == 5) {
+    //         disapear = true;
+    //     }
+    //     oh.add(detpropFromBox(box1, "label", 0.9));
+    //     if (!disapear) {
+    //         oh.update(pred_ptr);
+    //     }
+    //     detectionprops det1_pred = oh.predict(pred_ptr);
+    //     Box box1_pred            = boxFromDetprop(det1_pred);
+
+    //     boxm.cleanCanvas();
+    //     cv::Mat normal_canvas = boxm.getCanvas().clone();
+    //     cv::Size normal_size  = normal_canvas.size();
+    //     cv::Mat result        = cv::Mat::zeros(
+    //         cv::Size(normal_size.width * 2, normal_size.height),
+    //         CV_8UC3);
+    //     std::string message;
+    //     if (disapear) {
+    //         message = "Predicting";
+    //         duration++;
+    //     } else {
+    //         message = "Updating";
+    //     }
+    //     cv::Size txt_size =
+    //         cv::getTextSize(message, cv::FONT_HERSHEY_SIMPLEX, 1, 1, 0);
+    //     putText(boxm.getCanvas(), message, cv::Point(0, 0 +
+    //     txt_size.height),
+    //             cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 1,
+    //             8);
+    //     boxm.drawBox(box1, cv::Scalar(0, 0, 255), !disapear,
+    //     boxm.getCanvas()); boxm.drawBox(box1, cv::Scalar(0, 0, 255),
+    //     true, normal_canvas); boxm.drawBox(box1_pred, cv::Scalar(0, 255,
+    //     0), disapear,
+    //                  boxm.getCanvas());
+
+    //     hconcat(boxm.getCanvas(), normal_canvas, result);
+
+    //     boxm.setCanvas(result);
+
+    //     boxm.show();
+    //     char code = (char)cv::waitKey(10);
+    //     if (code == 'q' || code == 'Q' || code == 27) {
+    //         break;
+    //     }
+    //     if (duration >= std::rand() % 1000 + 1) {
+    //         duration = 0;
+    //         disapear = false;
+    //     }
+    // }
+
+    // delete pred_ptr;
     return 0;
 }

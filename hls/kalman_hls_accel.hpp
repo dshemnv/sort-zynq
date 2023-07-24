@@ -37,4 +37,14 @@
 // Set the optimization type:
 #define NPC1 XF_NPPC1
 
+// Control flags
+#define INIT_EN 1
+#define TIMEUPDATE_EN 2
+#define MEASUPDATE_EN 4
+#define XOUT_EN_TU 8
+#define UDOUT_EN_TU 16
+#define XOUT_EN_MU 32
+#define UDOUT_EN_MU 64
+#define EKF_MEM_OPT 128
+
 #endif //_XF_KALMANFILTER_CONFIG_H_
