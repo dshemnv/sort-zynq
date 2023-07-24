@@ -6,7 +6,7 @@
 #include <opencv2/opencv.hpp>
 
 void decomposeInUDU(const cv::Mat &M, cv::Mat *U, cv::Mat *D);
-void mat2FloatPtr(cv::Mat &mat, float *data_ptr);
+void mat2FloatPtr(cv::Mat *mat, float *data_ptr);
 void floatPtr2Mat(cv::Mat *mat, float *data_ptr);
-
+void floatPtr2DiagMat(cv::Mat *mat, float *data_ptr);
 #endif
