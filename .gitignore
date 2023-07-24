@@ -5,4 +5,8 @@ cmake_*
 CMakeCache.txt
 lib
 bin
-
+tmp
+.Xil
+.ipcache
+*.log
+_x
