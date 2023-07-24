@@ -5,15 +5,15 @@
 
 using namespace cv;
 Box::Box() {}
-Box::Box(Point barycenter, Size boxSize)
+Box::Box(cv::Point barycenter, cv::Size boxSize)
     : barycenter(barycenter), boxSize(boxSize), blocked(false) {}
 
 Box::~Box() {}
 
 bool Box::isBlocked() { return blocked; }
-void Box::setVelocity(Point2f vel) { velocity = vel; }
+void Box::setVelocity(cv::Point2f vel) { velocity = vel; }
 
-Point2f Box::getVelocity() { return velocity; }
+cv::Point2f Box::getVelocity() { return velocity; }
 
 void Box::setZone(Zone zone) { currentZone = zone; }
 Zone Box::getZone() { return currentZone; }
@@ -24,33 +24,33 @@ bool Box::boxInZone(Zone zone) {
 void Box::setDestinationZone(Zone zone) { destinationZone = zone; }
 Zone Box::getDestinationZone() { return destinationZone; }
 
-Size Box::getBoxMeasures() {
-    Point tl = getTopLeft();
-    Point br = getBottomRight();
-    return Size(br.y - tl.y, br.x - tl.x);
+cv::Size Box::getBoxMeasures() {
+    cv::Point tl = getTopLeft();
+    cv::Point br = getBottomRight();
+    return cv::Size(br.y - tl.y, br.x - tl.x);
 }
 
-void Box::setDestination(Point dest) { destination = dest; }
+void Box::setDestination(cv::Point dest) { destination = dest; }
 
-Point Box::getDestination() { return destination; }
-Point Box::getCoordinates() { return barycenter; }
+cv::Point Box::getDestination() { return destination; }
+cv::Point Box::getCoordinates() { return barycenter; }
 
-Point Box::getTopLeft() {
-    Point topLeft;
+cv::Point Box::getTopLeft() {
+    cv::Point topLeft;
     topLeft.x = barycenter.x - (int)(boxSize.width / 2);
     topLeft.y = barycenter.y + (int)(boxSize.height / 2);
     return topLeft;
 }
 
-Point Box::getBottomRight() {
-    Point bottomRight;
+cv::Point Box::getBottomRight() {
+    cv::Point bottomRight;
     bottomRight.x = barycenter.x + (int)(boxSize.width / 2);
     bottomRight.y = barycenter.y - (int)(boxSize.height / 2);
     return bottomRight;
 }
 
 void Box::move() {
-    Point previous_pos = barycenter;
+    cv::Point previous_pos = barycenter;
     if (destination.x < barycenter.x) {
         barycenter.x -= velocity.x;
         barycenter.x =
@@ -79,11 +79,11 @@ void Box::move() {
 }
 
 BoxManager::BoxManager() {}
-BoxManager::BoxManager(Size imageSize, int randomSeed)
+BoxManager::BoxManager(cv::Size imageSize, int randomSeed)
     : randomSeed(randomSeed), imageSize(imageSize) {
     srand(randomSeed);
-    namedWindow("Output");
-    canvas = Mat::zeros(imageSize, CV_8UC3);
+    cv::namedWindow("Output");
+    canvas = cv::Mat::zeros(imageSize, CV_8UC3);
 }
 
 BoxManager::~BoxManager() {}
@@ -92,21 +92,21 @@ std::vector<Box> BoxManager::getBoxes() { return boxes; }
 
 void BoxManager::addBox(Box box) { boxes.push_back(box); }
 
-Mat BoxManager::getCanvas() { return canvas; }
+cv::Mat BoxManager::getCanvas() { return canvas; }
 
-void BoxManager::setCanvas(Mat canvas) { this->canvas = canvas; }
+void BoxManager::setCanvas(cv::Mat canvas) { this->canvas = canvas; }
 
-void BoxManager::show() { imshow("Output", canvas); }
+void BoxManager::show() { cv::imshow("Output", canvas); }
 
-void BoxManager::cleanCanvas() { canvas = Mat::zeros(imageSize, CV_8UC3); }
+void BoxManager::cleanCanvas() { canvas = cv::Mat::zeros(imageSize, CV_8UC3); }
 
 Box BoxManager::generateRandomBox() {
     int borderWidth = 5;
     int minArea     = imageSize.area() / 30;
 
-    Point barycenter;
-    Point maxDist;
-    Size boxSize;
+    cv::Point barycenter;
+    cv::Point maxDist;
+    cv::Size boxSize;
     Zone zone;
 
     do {
@@ -145,16 +145,16 @@ Box BoxManager::generateRandomBox() {
     return box;
 }
 
-Point BoxManager::genRandomDestination() {
-    Point dest;
+cv::Point BoxManager::genRandomDestination() {
+    cv::Point dest;
 
     dest.x = std::rand() % (imageSize.width - 10);
     dest.y = std::rand() % (imageSize.height - 10);
     return dest;
 }
 
-Point BoxManager::genRandomDestination(const Zone zone) {
-    Point dest;
+cv::Point BoxManager::genRandomDestination(const Zone zone) {
+    cv::Point dest;
 
     switch (zone) {
     case TOP_LEFT:
@@ -180,8 +180,8 @@ Point BoxManager::genRandomDestination(const Zone zone) {
 }
 
 bool BoxManager::boxInCanvas(Box &box) {
-    Point2f br = box.getBottomRight();
-    Point2f tl = box.getTopLeft();
+    cv::Point2f br = box.getBottomRight();
+    cv::Point2f tl = box.getTopLeft();
 
     if ((tl.x <= 0) || (tl.y <= 0)) {
         return false;
@@ -191,7 +191,8 @@ bool BoxManager::boxInCanvas(Box &box) {
     return true;
 }
 
-void BoxManager::drawBox(Box &box, Scalar color, bool draw, Mat canvas) {
+void BoxManager::drawBox(Box &box, cv::Scalar color, bool draw,
+                         cv::Mat canvas) {
     setZone(box);
     if (box.isBlocked() || !boxInCanvas(box) ||
         box.getCoordinates() == box.getDestination()) {
@@ -199,13 +200,13 @@ void BoxManager::drawBox(Box &box, Scalar color, bool draw, Mat canvas) {
     }
     box.move();
     if (draw) {
-        rectangle(canvas, box.getTopLeft(), box.getBottomRight(), color, 1,
-                  LINE_4);
+        cv::rectangle(canvas, box.getTopLeft(), box.getBottomRight(), color, 1,
+                      LINE_4);
     }
 }
 
 void BoxManager::setZone(Box &box) {
-    Point currentLocation = box.getCoordinates();
+    cv::Point currentLocation = box.getCoordinates();
 
     int dw = imageSize.width - currentLocation.x;
     int dh = imageSize.height - currentLocation.y;
@@ -238,7 +239,7 @@ void BoxManager::updateBoxPosition(Box &box) {
         possibleDirections[std::rand() % possibleDirections.size()];
 
     // Get a random new destination in zone
-    const Point dest = genRandomDestination(direction);
+    const cv::Point dest = genRandomDestination(direction);
     box.setDestinationZone(direction);
     box.setDestination(dest);
 }
