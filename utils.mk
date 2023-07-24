@@ -23,6 +23,17 @@ REPORT := no
 PROFILE := no
 DEBUG := no
 
+
+# checking Vivado
+ifeq ($(wildcard $(XILINX_VIVADO)/bin/vivado),)
+$(error [ERROR]: Cannot locate Vivado installation. Please set XILINX_VIVADO variable. Have you sourced settings?)
+endif
+
+# checking Vitis
+ifeq ($(wildcard $(XILINX_VITIS)/bin/v++),)
+$(error [ERROR]: Cannot locate Vitis installation in $(XILINX_VITIS). Please set XILINX_VITIS variable. Have you sourced settings?)
+endif
+
 #'estimate' for estimate report generation
 #'system' for system report generation
 ifneq ($(REPORT), no)
@@ -64,22 +75,10 @@ K_IMAGE ?= $(SYSROOT)/../../Image
 ROOTFS ?= $(SYSROOT)/../../rootfs.ext4
 endif
 
-check_sysroot:
+# checking sysroot
 ifneq ($(HOST_ARCH), x86)
-ifeq (,$(wildcard $(SYSROOT)))
-	$(error SYSROOT ENV variable is not set, please set ENV variable correctly and rerun)
-endif
-endif
-check_kimage:
-ifneq ($(HOST_ARCH), x86)
-ifeq (,$(wildcard $(K_IMAGE)))
-	$(error K_IMAGE ENV variable is not set, please set ENV variable correctly and rerun)
-endif
-endif
-check_rootfs:
-ifneq ($(HOST_ARCH), x86)
-ifeq (,$(wildcard $(ROOTFS)))
-	$(error ROOTFS ENV variable is not set, please set ENV variable correctly and rerun)
+ifeq ($(wildcard $(SYSROOT)),)
+$(error [ERROR]: SYSROOT variable is not set, please set SYSROOT variable correctly and rerun)
 endif
 endif
 
@@ -139,31 +138,15 @@ AIECXX := aiecompiler
 AIESIMULATOR := aiesimulator
 X86SIMULATOR := x86simulator
 
-.PHONY: check_vivado
-check_vivado:
-ifeq (,$(wildcard $(XILINX_VIVADO)/bin/vivado))
-	@echo "Cannot locate Vivado installation. Please set XILINX_VIVADO variable." && false
-endif
 
-.PHONY: check_vpp
-check_vpp:
-ifeq (,$(wildcard $(XILINX_VITIS)/bin/v++))
-	@echo "Cannot locate Vitis installation. Please set XILINX_VITIS variable." && false
-endif
-
-.PHONY: check_xrt
-check_xrt:
-ifeq (,$(wildcard $(XILINX_XRT)/lib/libxilinxopencl.so))
-	@echo "Cannot locate XRT installation. Please set XILINX_XRT variable." && false
-endif
 
 export PATH := $(XILINX_VITIS)/bin:$(XILINX_XRT)/bin:$(PATH)
 ifeq ($(HOST_ARCH), x86)
-ifeq (,$(LD_LIBRARY_PATH))
-LD_LIBRARY_PATH := $(XILINX_XRT)/lib
-else
-LD_LIBRARY_PATH := $(XILINX_XRT)/lib:$(LD_LIBRARY_PATH)
-endif
+	ifeq (,$(LD_LIBRARY_PATH))
+		LD_LIBRARY_PATH := $(XILINX_XRT)/lib
+	else
+		LD_LIBRARY_PATH := $(XILINX_XRT)/lib:$(LD_LIBRARY_PATH)
+	endif
 endif
 
 # Cleaning stuff
