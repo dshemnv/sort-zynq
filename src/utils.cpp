@@ -41,10 +41,3 @@ void floatPtr2Mat(cv::Mat *mat, float *data_ptr) {
     }
     mat->reshape(0, origSize.height);
 }
-
-void floatPtr2DiagMat(cv::Mat *mat, float *data_ptr) {
-    cv::Size origSize = mat->size();
-    for (int i = 0; i < origSize.height; i++) {
-        mat->at<float>(i, i) = data_ptr[i];
-    }
-}

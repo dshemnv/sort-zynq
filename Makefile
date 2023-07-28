@@ -9,15 +9,21 @@ TARGET ?= sw_emu
 PLATFORM ?= /opt/xilinx/xilinx_zcu102_base_202120_1/xilinx_zcu102_base_202120_1.xpfm
 PLATFORM_NAME = $(strip $(patsubst %.xpfm, % , $(shell basename $(PLATFORM))))
 
+# ifeq ($(TARGET), sw_emu)
+# $(info Target is software emulation, setting HOST_ARCH to x86)
+# HOST_ARCH := x86
+# endif
+
 APP_NAME := kalman
 BUILD_DIR := build/$(HOST_ARCH)/$(TARGET)
+$(info $(BUILD_DIR))
 
 SRC_DIR := src
 KERNEL_DIR := hls
 VITIS_VISION_LIB_DIR := extern/vitis_lib/vision
 
 # sets various useful variables, if using v++
-ifneq ($(filter accel package app debug, $(MAKECMDGOALS)),)
+ifneq ($(filter accel package app debug-all debug-app, $(MAKECMDGOALS)),)
 include utils.mk
 endif
 
@@ -50,11 +56,12 @@ IFLAGS := $(addprefix -I, $(IDIRS))
 HOST_SRCS = $(wildcard $(SRC_DIR)/*.cpp)
 
 ifeq ($(HOST_ARCH), aarch64)
-HOST_SRCS += $(wildcard $(KERNEL_DIR)/*.cpp)
+# HOST_SRCS += $(wildcard $(KERNEL_DIR)/*.cpp)
 HOST_SRCS += $(VITIS_VISION_LIB_DIR)/ext/xcl2/xcl2.cpp
 endif
 
-OBJS := $(subst $(SRC_DIR),$(BUILD_DIR),$(HOST_SRCS:.cpp=.o))
+HOST_SRCS_FILES_ONLY := $(notdir $(HOST_SRCS))
+OBJS := $(addprefix $(BUILD_DIR)/, $(HOST_SRCS_FILES_ONLY:.cpp=.o))
 DEP_FILES := $(OBJS:%.o=%.d)
 
 # common compile flags
@@ -80,6 +87,9 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
 	@mkdir -p $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+$(BUILD_DIR)/xcl2.o: $(VITIS_VISION_LIB_DIR)/ext/xcl2/xcl2.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
 $(BUILD_DIR)/$(APP_NAME): $(OBJS)
 	@mkdir -p $(BUILD_DIR)
 	$(CXX) $(OBJS) $(LDFLAGS) -o $@
@@ -94,7 +104,7 @@ XCLBIN_FILES += $(BUILD_DIR)/xclbins/krnl_kalmanfilter.xclbin
 XCLBIN_FILES_PKG += $(BUILD_DIR)/xclbins/krnl_kalmanfilter_pkg.xclbin
 
 $(TEMP_DIR)/kalmanfilter_accel.xo: $(KERNEL_DIR)/kalman_hls_accel.cpp
-	$(ECHO) "Compiling Kalman Filter HLS Kernel"
+	@echo "Compiling Kalman Filter HLS Kernel"
 	@mkdir -p $(TEMP_DIR)
 	@mkdir -p $(TEMP_REPORT_DIR)
 	@mkdir -p $(TEMP_LOG_DIR)
@@ -103,6 +113,7 @@ $(TEMP_DIR)/kalmanfilter_accel.xo: $(KERNEL_DIR)/kalman_hls_accel.cpp
 XCLBIN_OBJS += $(TEMP_DIR)/kalmanfilter_accel.xo
 XCLBIN_DEPS += $(XCLBIN_OBJS)
 SD_FILES += $(BUILD_DIR)/$(APP_NAME)
+SD_FILES += xrt.ini
 
 SD_FILES_PREFIXED = $(addprefix --package.sd_file ,$(SD_FILES))
 
@@ -110,8 +121,13 @@ $(XCLBIN_FILES): $(XCLBIN_DEPS)
 	@mkdir -p $(BUILD_DIR)
 	$(VPP) -l $(VPP_FLAGS) --temp_dir $(TEMP_DIR) --report_dir $(TEMP_REPORT_DIR)/krnl_kalmanfilter $(VPP_LDFLAGS) -o $@ $^
 
-# ---------------------------- SD Image generation --------------------------- #
+# ----------------------------- Emulation config ----------------------------- #
+EMCONFIG := $(BUILD_DIR)/emconfig.json
 
+$(EMCONFIG):
+	emconfig --platform $(PLATFORM) --od $(BUILD_DIR)
+
+# ---------------------------- SD Image generation --------------------------- #
 $(BUILD_DIR)/sd_card/sd_card.img: $(XCLBIN_FILES) $(BUILD_DIR)/$(APP_NAME)
 	$(VPP) -t $(TARGET) --platform $(PLATFORM) -o $(XCLBIN_FILES_PKG) -p $(XCLBIN_FILES) --package.out_dir $(@D) --package.rootfs $(ROOTFS) --package.kernel_image $(K_IMAGE) $(SD_FILES_PREFIXED)
 	@echo "*** SD Card Image successfully generated ***"
@@ -121,11 +137,19 @@ $(BUILD_DIR)/sd_card/sd_card.img: $(XCLBIN_FILES) $(BUILD_DIR)/$(APP_NAME)
 app: $(BUILD_DIR)/$(APP_NAME)
 
 .PHONY: accel
-accel: $(XCLBIN_DEPS)
+accel: $(XCLBIN_FILES)
 
-.PHONY: debug
-debug: CXXFLAGS += -g3 -O0
-debug: app
+.PHONY: debug-accel
+debug-accel: VPP_FLAGS += -g
+debug-accel: VPP_LDFLAGS += --advanced.param compiler.fsanitize=address,memory --debug.chipscope kalmanfilter_accel_1
+debug-accel: accel 
+
+.PHONY: debug-app
+debug-app: CXXFLAGS += -g3 -O0
+debug-app: app 
+
+.PHONY: debug-all
+debug-all: debug-accel debug-app
 
 .PHONY: all
 all: accel app
@@ -142,7 +166,8 @@ clean-app:
 
 .PHONY: clean-pkg
 clean-pkg:
-	@rm -r $(BUILD_DIR)/sd_card
+	@rm -rf $(BUILD_DIR)/sd_card
+	@rm -rf $(TEMP_DIR)
 
 .PHONY: clean
 clean:

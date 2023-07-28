@@ -3,19 +3,20 @@
 #include "detection.hpp"
 #include "utils.hpp"
 #ifdef KALMAN_ACCEL
+#include "kalman_hls_accel.hpp"
 #include "xcl2.hpp"
 #include "xf_kalmanfilter.hpp"
 #endif
 #include <iostream>
 #include <opencv2/video/tracking.hpp>
 
-typedef struct {
+struct kalmanConfig {
     cv::Mat F; // State transition matrix
     cv::Mat H; // Observation matrix
     cv::Mat Q; // Process noise uncertainty
     cv::Mat P; // Estimate uncertainty
     cv::Mat R; // Measurment uncertainty
-} kalmanConfig;
+};
 
 struct kalmanParams {
     int dynamParams;
@@ -30,15 +31,11 @@ struct kalmanBuf {
     size_t size;
     cl::Buffer ocl_buffer;
     float *data_ptr;
-    void extactData(destination dest, bool isdiag = false) {
+    void extactData(destination dest) {
         if (dest == DATA_PTR) {
             mat2FloatPtr(&cv_mat, data_ptr);
         } else if (dest == CV_MAT) {
-            if (isdiag) {
-                floatPtr2DiagMat(&cv_mat, data_ptr);
-            } else {
-                floatPtr2Mat(&cv_mat, data_ptr);
-            }
+            floatPtr2Mat(&cv_mat, data_ptr);
         };
     };
 };
@@ -91,6 +88,8 @@ class KalmanHLS : public KalmanBase {
     kalmanBuf outD; // Output Error Estimate Covariance matrix, D part
 
     cl::Kernel kernel;
+    cl::CommandQueue *queuePtr;
+    cl::Event *eventPtr;
 
   public:
     cl_int err;
@@ -109,6 +108,8 @@ class KalmanHLS : public KalmanBase {
     void load(kalmanConfig config);
     void init(cv::Mat initialEstimateUncertainty);
     void executeKernel(cl::CommandQueue &queue, const int &flag);
+    void printOutput();
+    void finish();
     kalmanConfig dump();
 };
 #endif

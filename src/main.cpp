@@ -9,7 +9,7 @@ void kalmanInit(float dt, KalmanBase *predictor) {
     kalmanConfig config;
 
     // TODO: Change F init to be generic.
-    config.F               = cv::Mat::eye(8, 8, CV_32F); // F
+    config.F               = cv::Mat::eye(KF_N, KF_N, CV_32F); // F
     config.F.at<float>(1)  = dt;
     config.F.at<float>(2)  = 0.5f * dt * dt;
     config.F.at<float>(10) = dt;
@@ -17,20 +17,17 @@ void kalmanInit(float dt, KalmanBase *predictor) {
     config.F.at<float>(29) = 0.5f * dt * dt;
     config.F.at<float>(37) = dt;
 
-    config.Q =
-        0.09f * cv::Mat::eye(predictor->getParams().dynamParams,
-                             predictor->getParams().measureParams, CV_32F); // Q
-    config.R =
-        0.1f * cv::Mat::eye(predictor->getParams().measureParams,
-                            predictor->getParams().measureParams, CV_32F); // R
+    config.Q = 0.09f * cv::Mat::eye(KF_N, KF_N, CV_32F); // Q
+    config.R = 0.1f * cv::Mat::eye(KF_M, KF_M, CV_32F);  // R
 
-    config.H = (cv::Mat_<float>(predictor->getParams().dynamParams,
-                                predictor->getParams().dynamParams)
-                    << 1,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                1, 0, 0, 0, 0, 0, 0, 0, 0, 1); // H
+    // clang-format off
+    config.H = (cv::Mat_<float>(KF_M, KF_N) <<  1, 0, 0, 0, 0, 0, 0, 0,
+                                                0, 0, 0, 1, 0, 0, 0, 0,
+                                                0, 0, 0, 0, 0, 0, 1, 0,
+                                                0, 0, 0, 0, 0, 0, 0, 1); // H
+    // clang-format on
 
-    cv::Mat P = cv::Mat::eye(8, 8, CV_32F) * 80; // P
+    cv::Mat P = cv::Mat::eye(KF_N, KF_N, CV_32F) * 80; // P
 
     predictor->init(P);
     predictor->load(config);
@@ -38,7 +35,8 @@ void kalmanInit(float dt, KalmanBase *predictor) {
 
 int main(int argc, char const *argv[]) {
     std::cout << "Starting" << std::endl;
-    struct kalmanParams params = {8, 4, 0};
+    struct kalmanParams params = {
+        .dynamParams = 8, .measureParams = 4, .controlParams = 0};
     KalmanHLS kalm(params);
 
     std::vector<cl::Device> devices = xcl::get_xil_devices();
@@ -54,6 +52,37 @@ int main(int argc, char const *argv[]) {
 
     kalm.init_accelerator(devices, context, queue, event);
 
+    LOG_INFO("Finished initialization");
+
+    detectionprops det1;
+    det1.height      = 20;
+    det1.width       = 30;
+    det1.barycenter  = cv::Point2f(2.0, 3.0);
+    det1.label       = "Test";
+    det1.probability = 0.9;
+
+    detectionprops det2;
+    det1.height      = 22;
+    det1.width       = 31;
+    det1.barycenter  = cv::Point2f(2.0, 5.0);
+    det1.label       = "Test";
+    det1.probability = 0.9;
+
+    kalm.update(det1);
+
+    kalm.predict();
+    LOG_INFO("After first prediciton");
+    kalm.printOutput();
+
+    kalm.update(det2);
+
+    kalm.predict();
+    LOG_INFO("After second prediciton");
+    kalm.printOutput();
+
+    // kalm.dump();
+
+    // kalm.finish();
     LOG_INFO("Cleaning queue");
     queue.finish();
     std::cout << "Ending" << std::endl;

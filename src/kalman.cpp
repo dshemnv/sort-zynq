@@ -1,10 +1,10 @@
 #include "kalman.hpp"
 #ifdef KALMAN_ACCEL
 #include "common/xf_headers.hpp"
-#include "kalman_hls_accel.hpp"
 #include "xcl2.hpp"
 #endif
 #include "utils.hpp"
+#include <cassert>
 
 kalmanParams KalmanBase::getParams() { return params; }
 void KalmanBase::setParams(kalmanParams params) { this->params = params; }
@@ -54,30 +54,30 @@ void KalmanOCV::update(detectionprops det) {
 KalmanHLS::KalmanHLS() {}
 KalmanHLS::KalmanHLS(kalmanParams params) { setParams(params); }
 KalmanHLS::~KalmanHLS() {
-    free(A.data_ptr);
-    LOG_INFO("A freed");
-    free(Uq.data_ptr);
-    LOG_INFO("Uq freed");
-    free(Dq.data_ptr);
-    LOG_INFO("Dq freed");
-    free(U0.data_ptr);
-    LOG_INFO("U0 freed");
-    free(D0.data_ptr);
-    LOG_INFO("D0 freed");
-    free(X0.data_ptr);
-    LOG_INFO("X0 freed");
-    free(H.data_ptr);
-    LOG_INFO("H freed");
-    free(R.data_ptr);
-    LOG_INFO("R freed");
-    free(y.data_ptr);
-    LOG_INFO("y freed");
-    free(outX.data_ptr);
-    LOG_INFO("outX freed");
-    free(outD.data_ptr);
-    LOG_INFO("outD freed");
-    free(outU.data_ptr);
-    LOG_INFO("outU freed");
+    // free(A.data_ptr);
+    // LOG_INFO("A freed");
+    // free(Uq.data_ptr);
+    // LOG_INFO("Uq freed");
+    // free(Dq.data_ptr);
+    // LOG_INFO("Dq freed");
+    // free(U0.data_ptr);
+    // LOG_INFO("U0 freed");
+    // free(D0.data_ptr);
+    // LOG_INFO("D0 freed");
+    // free(X0.data_ptr);
+    // LOG_INFO("X0 freed");
+    // free(H.data_ptr);
+    // LOG_INFO("H freed");
+    // free(R.data_ptr);
+    // LOG_INFO("R freed");
+    // free(y.data_ptr);
+    // LOG_INFO("y freed");
+    // free(outX.data_ptr);
+    // LOG_INFO("outX freed");
+    // free(outD.data_ptr);
+    // LOG_INFO("outD freed");
+    // free(outU.data_ptr);
+    // LOG_INFO("outU freed");
 }
 
 void KalmanHLS::init(cv::Mat initialEstimateUncertainty) {
@@ -93,11 +93,9 @@ void KalmanHLS::init(cv::Mat initialEstimateUncertainty) {
     D0.cv_mat   = qd.diag(0);
     D0.size     = qd.rows * sizeof(float);
     D0.data_ptr = (float *)malloc(D0.size);
-    LOG_INFO("Size of D is " << D0.size);
-    LOG_INFO("With " << D0.cv_mat.rows << " rows and " << D0.cv_mat.cols
-                     << " cols.");
+
     X0.cv_mat   = cv::Mat::zeros(KF_N, 1, CV_32F);
-    X0.size     = X0.cv_mat.rows * sizeof(float);
+    X0.size     = KF_N * sizeof(float);
     X0.data_ptr = (float *)malloc(X0.size);
 
     outU.size     = U0.size;
@@ -113,6 +111,10 @@ void KalmanHLS::init(cv::Mat initialEstimateUncertainty) {
 void KalmanHLS::init_accelerator(std::vector<cl::Device> &devices,
                                  cl::Context &context, cl::CommandQueue &queue,
                                  cl::Event &event) {
+
+    // Store references
+    queuePtr = &queue;
+    eventPtr = &event;
 
     LOG_INFO("Accelerator initialization");
     cl::Device device = devices[0];
@@ -131,6 +133,9 @@ void KalmanHLS::init_accelerator(std::vector<cl::Device> &devices,
 
     OCL_CHECK(err, kernel = cl::Kernel(program, "kalmanfilter_accel", &err));
 
+    std::cout << "wait for enter" << std::endl;
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
     LOG_INFO("Allocating buffers");
     allocateBuffers(context);
 
@@ -141,34 +146,37 @@ void KalmanHLS::init_accelerator(std::vector<cl::Device> &devices,
     copyDataToDevice(queue, event);
 
     LOG_INFO("Execute accelerator initialization");
-    executeKernel(queue, 103);
+    // executeKernel(queue, INIT_EN + TIMEUPDATE_EN + XOUT_EN_TU + UDOUT_EN_TU);
+    executeKernel(queue, INIT_EN + TIMEUPDATE_EN + MEASUPDATE_EN + XOUT_EN_MU +
+                             UDOUT_EN_MU);
 
     LOG_INFO("Init output vectors");
     outX.cv_mat = cv::Mat::zeros(KF_N, 1, CV_32F);
     outD.cv_mat = cv::Mat::zeros(KF_N, 1, CV_32F);
-    outU.cv_mat = cv::Mat::zeros(KF_N, KF_M, CV_32F);
+    outU.cv_mat = cv::Mat::zeros(KF_N, KF_N, CV_32F);
 
+    LOG_INFO("Transfering data back");
     copyDataToHost(queue, event);
 
     LOG_INFO("Successfully initialized accelerator");
 }
 
 void KalmanHLS::load(kalmanConfig config) {
-    config.F.copyTo(A.cv_mat);
+    A.cv_mat   = config.F.clone();
     A.size     = config.F.cols * config.F.rows * sizeof(float);
     A.data_ptr = (float *)malloc(A.size);
 
-    config.H.copyTo(H.cv_mat);
+    H.cv_mat   = config.H.clone();
     H.size     = config.H.cols * config.H.rows * sizeof(float);
     H.data_ptr = (float *)malloc(H.size);
 
-    config.R.copyTo(R.cv_mat);
-    R.size     = config.R.cols * config.R.rows * sizeof(float);
+    R.cv_mat   = config.R.diag(0);
+    R.size     = KF_M * sizeof(float);
     R.data_ptr = (float *)malloc(R.size);
 
     cv::Mat uq(config.Q.size(), CV_32F);
     cv::Mat dq(config.Q.size(), CV_32F);
-    decomposeInUDU(config.Q, &uq, &dq);
+    decomposeInUDU(config.Q.clone(), &uq, &dq);
 
     Uq.cv_mat   = uq;
     Uq.size     = uq.cols * uq.rows * sizeof(float);
@@ -249,6 +257,17 @@ void KalmanHLS::setKernelArgs() {
 }
 
 void KalmanHLS::copyDataToDevice(cl::CommandQueue &queue, cl::Event &event) {
+
+    assert(A.size == KF_N * KF_N * sizeof(float));
+    assert(Uq.size == KF_N * KF_N * sizeof(float));
+    assert(Dq.size == KF_N * sizeof(float));
+    assert(U0.size == KF_N * KF_N * sizeof(float));
+    assert(D0.size == KF_N * sizeof(float));
+    assert(X0.size == KF_N * sizeof(float));
+    assert(H.size == KF_M * KF_N * sizeof(float));
+    assert(R.size == KF_M * sizeof(float));
+    assert(y.size == KF_M * sizeof(float));
+
     A.extactData(kalmanBuf::DATA_PTR);
     LOG_INFO("A data converted");
     Uq.extactData(kalmanBuf::DATA_PTR);
@@ -289,6 +308,11 @@ void KalmanHLS::copyDataToDevice(cl::CommandQueue &queue, cl::Event &event) {
 }
 
 void KalmanHLS::copyDataToHost(cl::CommandQueue &queue, cl::Event &event) {
+
+    assert(outX.size == KF_N * sizeof(float));
+    assert(outU.size == KF_N * KF_N * sizeof(float));
+    assert(outD.size == KF_N * sizeof(float));
+
     OCL_CHECK(err,
               queue.enqueueReadBuffer(outX.ocl_buffer, CL_TRUE, 0, outX.size,
                                       outX.data_ptr, nullptr, &event));
@@ -307,20 +331,85 @@ void KalmanHLS::copyDataToHost(cl::CommandQueue &queue, cl::Event &event) {
     LOG_INFO("Extracted outX");
     outU.extactData(kalmanBuf::CV_MAT);
     LOG_INFO("Extracted outU");
-    outD.extactData(kalmanBuf::CV_MAT, true);
+    outD.extactData(kalmanBuf::CV_MAT);
     LOG_INFO("Extracted outD");
+
+    // std::cout << outX.cv_mat << std::endl;
+    // std::cout << outU.cv_mat << std::endl;
+    // std::cout << outD.cv_mat << std::endl;
 }
 
 void KalmanHLS::executeKernel(cl::CommandQueue &queue, const int &flag) {
     OCL_CHECK(err, kernel.setArg(9, (unsigned char)flag));
-    OCL_CHECK(err, err = queue.enqueueTask(kernel));
+    OCL_CHECK(err, err = queue.enqueueTask(kernel, NULL, eventPtr));
+    clWaitForEvents(1, (const cl_event *)eventPtr);
 }
 
-const cv::Mat &KalmanHLS::predict() {}
+const cv::Mat &KalmanHLS::predict() {
+    copyDataToDevice(*queuePtr, *eventPtr);
 
-void KalmanHLS::update(detectionprops detection) {}
+    LOG_INFO("Execute accelerator prediction");
+    executeKernel(*queuePtr,
+                  INIT_EN + TIMEUPDATE_EN + XOUT_EN_TU + UDOUT_EN_TU);
 
-kalmanConfig KalmanHLS::dump() {}
+    copyDataToHost(*queuePtr, *eventPtr);
+
+    LOG_INFO("Successfully made a prediction");
+}
+
+void KalmanHLS::update(detectionprops detection) {
+    float xd = detection.barycenter.x;
+    float yd = detection.barycenter.y;
+    float wd = (float)detection.width;
+    float hd = (float)detection.height;
+
+    y.cv_mat = (cv::Mat_<float>(y.cv_mat.size()) << xd, yd, wd, hd);
+
+    copyDataToDevice(*queuePtr, *eventPtr);
+
+    LOG_INFO("Execute accelerator measure update");
+    // FIXME: This is not working properly. The Accelerator hangs in a START
+    // state on second call
+    executeKernel(*queuePtr,
+                  INIT_EN + MEASUPDATE_EN + XOUT_EN_MU + UDOUT_EN_MU);
+
+    copyDataToHost(*queuePtr, *eventPtr);
+
+    LOG_INFO("Successfully made a measure update");
+}
+
+void KalmanHLS::finish() {
+    queuePtr = nullptr;
+    eventPtr = nullptr;
+}
+
+void KalmanHLS::printOutput() {
+    LOG_INFO("X output");
+    LOG_INFO(outX.cv_mat);
+
+    LOG_INFO("P output");
+    LOG_INFO(outU.cv_mat);
+    LOG_INFO(outD.cv_mat);
+
+    // cv::Mat P = outU.cv_mat * outD.cv_mat * outU.cv_mat.t();
+    // LOG_INFO(P);
+}
+
+kalmanConfig KalmanHLS::dump() {
+    cv::FileStorage fs("config.json", cv::FileStorage::WRITE);
+
+    fs << "A" << A.cv_mat;
+    fs << "Uq" << Uq.cv_mat;
+    fs << "Dq" << Dq.cv_mat;
+    fs << "U0" << D0.cv_mat;
+    fs << "D0" << D0.cv_mat;
+    fs << "X0" << X0.cv_mat;
+    fs << "H" << H.cv_mat;
+    fs << "R" << R.cv_mat;
+    fs << "y" << y.cv_mat;
+
+    fs.release();
+}
 #endif
 MatManager::MatManager(/* args */) {}
 MatManager::~MatManager() {}
