@@ -1,4 +1,5 @@
 #include "objecthistory.hpp"
+#include "utils.hpp"
 
 int ObjectHistory::nextid = 0;
 
@@ -18,7 +19,7 @@ void ObjectHistory::update(KalmanBase *predictor) {
 
 detectionprops ObjectHistory::predict(KalmanBase *predictor) {
     detectionprops last;
-    cv::Mat prediction = predictor->predict();
+    TIMEXEC("Prediction", 10, cv::Mat prediction = predictor->predict());
     cv::Point2f barycenter =
         cv::Point2f(prediction.at<float>(0, 0), prediction.at<float>(3, 0));
     last = history.back();
