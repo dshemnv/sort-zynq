@@ -12,11 +12,11 @@ int ObjectHistory::getSize() { return history.size(); }
 
 void ObjectHistory::add(detectionprops det) { history.push(det); }
 
-void ObjectHistory::update(KalmanOCV *predictor) {
+void ObjectHistory::update(KalmanBase *predictor) {
     predictor->update(history.back());
 }
 
-detectionprops ObjectHistory::predict(KalmanOCV *predictor) {
+detectionprops ObjectHistory::predict(KalmanBase *predictor) {
     detectionprops last;
     cv::Mat prediction = predictor->predict();
     cv::Point2f barycenter =

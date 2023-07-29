@@ -25,8 +25,8 @@ class ObjectHistory {
     void add(detectionprops det);
     int getSize();
     void setSize(int size);
-    detectionprops predict(KalmanOCV *predictor);
-    void update(KalmanOCV *predictor);
+    detectionprops predict(KalmanBase *predictor);
+    void update(KalmanBase *predictor);
     dethist getHistory();
     void showHistory();
 };
