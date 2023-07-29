@@ -7,7 +7,20 @@
 #include "xcl2.hpp"
 #include "xf_kalmanfilter.hpp"
 #endif
+#ifndef KF_N
+#define KF_N 8
+#endif
+#ifndef KF_M
+#define KF_M 4
+#endif
+#if __INTELLISENSE__
+#undef __ARM_NEON
+#undef __ARM_NEON__
+#endif
+#include <Eigen/Core>
+#include <Eigen/Dense>
 #include <iostream>
+#include <opencv2/core/eigen.hpp>
 #include <opencv2/video/tracking.hpp>
 
 struct kalmanConfig {
@@ -69,6 +82,85 @@ class KalmanOCV : public KalmanBase {
     void init(cv::Mat initialEstimateUncertainty);
     kalmanConfig dump();
 };
+
+template <size_t N_STATES, size_t N_MEAS>
+class KalmanEigen : public KalmanBase {
+  private:
+    Eigen::Matrix<float, N_STATES, N_STATES> F;
+    Eigen::Matrix<float, N_MEAS, N_STATES> H;
+    Eigen::Matrix<float, N_STATES, N_STATES> Q;
+    Eigen::Matrix<float, N_MEAS, N_MEAS> R;
+    Eigen::Matrix<float, N_STATES, N_STATES> P;
+    Eigen::Vector<float, N_STATES> X;
+    cv::Mat output;
+
+  public:
+    KalmanEigen(kalmanParams params){};
+    KalmanEigen(){};
+    ~KalmanEigen(){};
+    Eigen::Matrix<float, N_STATES, N_MEAS> K();
+    const cv::Mat &predict();
+    void update(detectionprops detection);
+    void load(kalmanConfig config);
+    void init(cv::Mat initialEstimateUncertainty);
+    kalmanConfig dump();
+};
+
+template <size_t N_STATES, size_t N_MEAS>
+Eigen::Matrix<float, N_STATES, N_MEAS> KalmanEigen<N_STATES, N_MEAS>::K() {
+    Eigen::MatrixXf tmp1 = H * P * H.transpose() + R;
+    Eigen::MatrixXf gain = P * H.transpose() * tmp1.inverse();
+    return gain;
+}
+
+template <size_t N_STATES, size_t N_MEAS>
+const cv::Mat &KalmanEigen<N_STATES, N_MEAS>::predict() {
+
+    X = F * X;
+    P = F * P * F.transpose() + Q;
+
+    cv::eigen2cv<float>(X, output);
+    return output;
+}
+
+template <size_t N_STATES, size_t N_MEAS>
+void KalmanEigen<N_STATES, N_MEAS>::update(detectionprops detection) {
+    Eigen::Vector4f meas(detection.barycenter.x, detection.barycenter.y,
+                         detection.height, detection.width);
+
+    Eigen::MatrixXf gain = K();
+    Eigen::MatrixXf diag = Eigen::MatrixXf::Identity(N_STATES, N_STATES);
+
+    Eigen::Matrix<float, N_STATES, N_STATES> U = diag - gain * H;
+
+    X = X + gain * (meas - H * X);
+    P = U * P * U.transpose() + gain * R * gain.transpose();
+}
+
+template <size_t N_STATES, size_t N_MEAS>
+void KalmanEigen<N_STATES, N_MEAS>::load(kalmanConfig config) {
+    cv::cv2eigen<float>(config.F, F);
+    cv::cv2eigen<float>(config.H, H);
+    cv::cv2eigen<float>(config.Q, Q);
+    cv::cv2eigen<float>(config.R, R);
+}
+
+template <size_t N_STATES, size_t N_MEAS>
+void KalmanEigen<N_STATES, N_MEAS>::init(cv::Mat initialEstimateUncertainty) {
+    X = Eigen::VectorXf::Zero(N_STATES);
+    cv::cv2eigen<float>(initialEstimateUncertainty, P);
+}
+
+template <size_t N_STATES, size_t N_MEAS>
+kalmanConfig KalmanEigen<N_STATES, N_MEAS>::dump() {
+    kalmanConfig config;
+    cv::eigen2cv<float>(F, config.F);
+    cv::eigen2cv<float>(H, config.H);
+    cv::eigen2cv<float>(Q, config.Q);
+    cv::eigen2cv<float>(R, config.R);
+    cv::eigen2cv<float>(P, config.P);
+    return config;
+}
 
 #ifdef KALMAN_ACCEL
 class KalmanHLS : public KalmanBase {
