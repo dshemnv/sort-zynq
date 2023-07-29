@@ -23,8 +23,10 @@ KERNEL_DIR := hls
 VITIS_VISION_LIB_DIR := extern/vitis_lib/vision
 
 # sets various useful variables, if using v++
+ifeq ($(filter sw, $(TARGET)),)
 ifneq ($(filter accel package app debug-all debug-app, $(MAKECMDGOALS)),)
 include utils.mk
+endif
 endif
 
 # ------------------------- Setting correct compiler ------------------------- #
@@ -43,7 +45,8 @@ TEMP_LOG_DIR := $(TEMP_DIR)/logs
 
 # ----------------------------- Host app section ----------------------------- #
 
-IDIRS := src 
+IDIRS := src
+IDIRS += extern/eigen
 XF_VIDEO_IDIR := $(VITIS_VISION_LIB_DIR)/L1/include/video
 ifeq ($(HOST_ARCH), aarch64)
 IDIRS += $(SYSROOT)/usr/include/xrt $(XILINX_HLS)/include $(VITIS_VISION_LIB_DIR)/ext/xcl2 $(VITIS_VISION_LIB_DIR)/L1/include $(SYSROOT)/usr/include/opencv4 $(XF_VIDEO_IDIR) $(KERNEL_DIR)
