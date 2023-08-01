@@ -8,7 +8,7 @@
 
 kalmanParams KalmanBase::getParams() { return params; }
 void KalmanBase::setParams(kalmanParams params) { this->params = params; }
-
+// TODO: Change this class to be templated instead of using kalmanParams
 KalmanOCV::KalmanOCV(kalmanParams params) {
     kf = cv::KalmanFilter();
     kf.init(params.dynamParams, params.measureParams, params.controlParams);

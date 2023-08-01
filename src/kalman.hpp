@@ -95,6 +95,7 @@ class KalmanEigen : public KalmanBase {
     cv::Mat output;
 
   public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     KalmanEigen(kalmanParams params){};
     KalmanEigen(){};
     ~KalmanEigen(){};

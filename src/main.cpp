@@ -41,8 +41,8 @@ int main(int argc, char const *argv[]) {
     params.dynamParams   = 8;
     params.measureParams = 4;
 
-    // pred_ptr = new KalmanOCV(params);
-    pred_ptr = new KalmanEigen<8, 4>();
+    pred_ptr = new KalmanOCV(params);
+    // pred_ptr = new KalmanEigen<8, 4>();
     ObjectHistory oh(5);
     kalmanInit(0.01, pred_ptr);
 
@@ -59,6 +59,7 @@ int main(int argc, char const *argv[]) {
         if (std::rand() % 100 == 5) {
             disapear = true;
         }
+        disapear = false;
         oh.add(detpropFromBox(box1, "label", 0.9));
         if (!disapear) {
             oh.update(pred_ptr);
