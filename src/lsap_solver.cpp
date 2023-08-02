@@ -12,9 +12,11 @@ void AuctionNaive::solve(const cv::Mat &costMat, cv::Mat &result) {
     nObjects = costMat.cols;
 
     array<double> costMatA;
-    costMatA.data = (double *)costMat.data;
     costMatA.cols = costMat.cols;
     costMatA.rows = costMat.rows;
+    costMatA.data = new double[costMatA.rows * costMatA.cols];
+    std::memcpy(costMatA.data, costMat.ptr<double>(),
+                sizeof(double) * costMat.rows * costMat.cols);
 
     matrix_t matType;
     if (nAgents == nObjects) {
@@ -65,4 +67,5 @@ void AuctionNaive::solve(const cv::Mat &costMat, cv::Mat &result) {
     delete[] res.result;
     delete[] agent2object.data;
     delete[] indexes.data;
+    delete[] costMatA.data;
 }
