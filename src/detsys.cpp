@@ -36,6 +36,7 @@ MOTData::MOTData(const std::string &folder) {
         std::istringstream lineStream(line);
         std::string currentField;
         int fieldcnt = 0;
+        // TODO: Replace motdet with cv::Rect
         motdet currentDet;
         while ((std::getline(lineStream, currentField, ',')) &&
                (fieldcnt < 6)) {
@@ -50,10 +51,10 @@ MOTData::MOTData(const std::string &folder) {
                 currentDet.ytl = std::stod(currentField);
                 break;
             case 4:
-                currentDet.height = std::stod(currentField);
+                currentDet.width = std::stod(currentField);
                 break;
             case 5:
-                currentDet.width = std::stod(currentField);
+                currentDet.height = std::stod(currentField);
                 break;
             default:
                 break;
@@ -76,7 +77,35 @@ std::vector<std::vector<MOTData::motdet>> MOTData::getDetections() {
     return detections;
 }
 const std::string &MOTData::getName() { return datasetName; }
+
 AqSysFiles &MOTData::getAqsys() { return aqSys; }
+
+std::vector<cv::Rect> MOTData::getBb(int frameNum) {
+    std::vector<cv::Rect> output;
+
+    // if (frameNum == detections.size()) {
+    //     return output;
+    // }
+
+    // -1 to be in sync with frames
+    std::vector<motdet> currentDetections = detections.at(frameNum - 1);
+
+    for (std::vector<motdet>::iterator it = currentDetections.begin();
+         it != currentDetections.end(); ++it) {
+        cv::Rect bb;
+
+        bb.x = it->xtl;
+        bb.y = it->ytl;
+
+        bb.width  = it->width;
+        bb.height = it->height;
+
+        output.push_back(bb);
+    }
+
+    return output;
+}
+
 void MOTData::load(const std::string &folder) {}
 
 void MOTData::start() {}

@@ -12,10 +12,12 @@ AqSysFiles::AqSysFiles() { currentFrameIdx = 0; }
 AqSysFiles::~AqSysFiles() {}
 
 bool AqSysFiles::eof() {
-    if (currentFrameIdx != frames.size()) {
+    if (currentFrameIdx < frames.size()) {
         return false;
     }
     return true;
 }
 
 const cv::Mat &AqSysFiles::getFrame() { return frames[currentFrameIdx++]; }
+
+int AqSysFiles::index() { return currentFrameIdx; }

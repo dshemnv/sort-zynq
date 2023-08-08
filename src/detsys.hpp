@@ -9,6 +9,7 @@ class DetSys {
     virtual void start() = 0;
     virtual void stop()  = 0;
     virtual ~DetSys(){};
+    virtual std::vector<cv::Rect> getBb(int frameNum) = 0;
 };
 
 class MOTData : public DetSys {
@@ -32,6 +33,7 @@ class MOTData : public DetSys {
     std::vector<std::vector<motdet>> getDetections();
     const std::string &getName();
     AqSysFiles &getAqsys();
+    std::vector<cv::Rect> getBb(int frameNum);
     void load(const std::string &folder);
     void start();
     void stop();
