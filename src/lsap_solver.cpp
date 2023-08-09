@@ -7,7 +7,8 @@ AuctionNaive::AuctionNaive(double eps) : eps(eps) {}
 
 AuctionNaive::~AuctionNaive() {}
 
-void AuctionNaive::solve(const cv::Mat &costMat, cv::Mat &result) {
+void AuctionNaive::solve(const cv::Mat &costMat, cv::Mat &result,
+                         cv::Mat &indexes) {
     nAgents  = costMat.rows;
     nObjects = costMat.cols;
 
@@ -54,18 +55,20 @@ void AuctionNaive::solve(const cv::Mat &costMat, cv::Mat &result) {
     }
 
     array<int> agent2object;
-    array<int> indexes;
+    array<int> indexes_res;
 
     init<int>(&agent2object, 1, res.n_assignment, -1);
-    init<int>(&indexes, 1, res.n_assignment, -1);
+    init<int>(&indexes_res, 1, res.n_assignment, -1);
 
-    assignements_to_arrays<double>(&res, &agent2object, &indexes, matType);
+    assignements_to_arrays<double>(&res, &agent2object, &indexes_res, matType);
 
-    cv::Mat tmp = cv::Mat(1, agent2object.cols, CV_32SC1, agent2object.data);
-    result      = tmp.clone();
+    cv::Mat tmp  = cv::Mat(1, agent2object.cols, CV_32SC1, agent2object.data);
+    cv::Mat tmpi = cv::Mat(1, indexes_res.cols, CV_32SC1, indexes_res.data);
+    result       = tmp.clone();
+    indexes      = tmpi.clone();
 
     delete[] res.result;
     delete[] agent2object.data;
-    delete[] indexes.data;
+    delete[] indexes_res.data;
     delete[] costMatA.data;
 }

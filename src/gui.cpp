@@ -2,13 +2,14 @@
 
 GUI::GUI() {}
 
-GUI::GUI(AqSys &aqsys, const std::string &windowName) : name(windowName) {
+GUI::GUI(AqSys &aqsys, const std::string &windowName)
+    : name(windowName), showBb(false) {
     cv::namedWindow(windowName, cv::WINDOW_NORMAL);
     this->aqsys = &aqsys;
 }
 
 GUI::GUI(DetSys &detsys, AqSys &aqsys, const std::string &windowName)
-    : name(windowName) {
+    : name(windowName), showBb(false) {
     cv::namedWindow(windowName, cv::WINDOW_NORMAL);
     this->detsys = &detsys;
     this->aqsys  = &aqsys;
@@ -29,8 +30,16 @@ void GUI::drawBb(const cv::Rect &bb, const std::string &label,
         cv::getTextSize(label, font, fontScale, thickness, nullptr);
 
     cv::Point position = bb.tl() + cv::Point(0, -textSize.height / 4);
-    cv::putText(currentFrame, label, position, font, fontScale,
-                cv::Scalar(255, 255, 255), thickness);
+    cv::putText(currentFrame, label, position, font, fontScale, color,
+                thickness);
+}
+
+void GUI::drawFromDetections(std::vector<Metadata> &dets) {
+    for (std::vector<Metadata>::iterator it = dets.begin(); it != dets.end();
+         ++it) {
+
+        drawBb(it->toBb(), it->label, cv::Scalar(0, 0, 0));
+    }
 }
 
 int GUI::nextFrame(cv::Mat *frame) {

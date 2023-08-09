@@ -20,6 +20,7 @@ class GUI {
     void toggleBb();
     void drawBb(const cv::Rect &bb, const std::string &label,
                 const cv::Scalar &color);
+    void drawFromDetections(std::vector<Metadata> &dets);
     int nextFrame(cv::Mat *mat);
     void show();
 };

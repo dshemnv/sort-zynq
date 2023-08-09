@@ -73,9 +73,20 @@ MOTData::MOTData(const std::string &folder) {
 MOTData::MOTData() {}
 
 MOTData::~MOTData() {}
-std::vector<std::vector<MOTData::motdet>> MOTData::getDetections() {
-    return detections;
+std::vector<Metadata> MOTData::getDetections(int frameNum) {
+    std::vector<motdet> currentBbs = detections.at(frameNum);
+
+    std::vector<Metadata> detProps;
+
+    for (std::vector<motdet>::iterator it = currentBbs.begin();
+         it != currentBbs.end(); ++it) {
+        Metadata det(it->xtl + (it->width / 2), it->ytl + (it->height / 2),
+                     it->height, it->width, "person", 50);
+        detProps.push_back(det);
+    }
+    return detProps;
 }
+
 const std::string &MOTData::getName() { return datasetName; }
 
 AqSysFiles &MOTData::getAqsys() { return aqSys; }
@@ -87,8 +98,7 @@ std::vector<cv::Rect> MOTData::getBb(int frameNum) {
     //     return output;
     // }
 
-    // -1 to be in sync with frames
-    std::vector<motdet> currentDetections = detections.at(frameNum - 1);
+    std::vector<motdet> currentDetections = detections.at(frameNum);
 
     for (std::vector<motdet>::iterator it = currentDetections.begin();
          it != currentDetections.end(); ++it) {

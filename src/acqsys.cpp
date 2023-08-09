@@ -20,4 +20,4 @@ bool AqSysFiles::eof() {
 
 const cv::Mat &AqSysFiles::getFrame() { return frames[currentFrameIdx++]; }
 
-int AqSysFiles::index() { return currentFrameIdx; }
+int AqSysFiles::index() { return (currentFrameIdx - 1); }

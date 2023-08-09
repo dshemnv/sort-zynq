@@ -10,3 +10,4 @@ tmp
 .ipcache
 *.log
 _x
+*.o

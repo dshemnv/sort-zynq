@@ -15,6 +15,10 @@ KalmanOCV::KalmanOCV(kalmanParams params) {
     setParams(params);
 }
 
+KalmanOCV::KalmanOCV(int dynamParams, int measureParams, int controlParams) {
+    kf = cv::KalmanFilter(dynamParams, measureParams, controlParams);
+}
+
 KalmanOCV::KalmanOCV() {}
 
 KalmanOCV::~KalmanOCV() {}
@@ -23,11 +27,16 @@ void KalmanOCV::init(cv::Mat initialEstimateUncertainty) {
     kf.errorCovPre = initialEstimateUncertainty;
 }
 
+const cv::Mat &KalmanOCV::getState() { return kf.statePost; }
+
+void KalmanOCV::setState(const cv::Mat &new_state) { kf.statePost = new_state; }
+
 void KalmanOCV::load(kalmanConfig config) {
     config.F.copyTo(kf.transitionMatrix);
     config.Q.copyTo(kf.processNoiseCov);
     config.R.copyTo(kf.measurementNoiseCov);
     config.H.copyTo(kf.measurementMatrix);
+    config.P.copyTo(kf.errorCovPost);
 }
 
 kalmanConfig KalmanOCV::dump() {
@@ -44,11 +53,7 @@ const cv::Mat &KalmanOCV::predict() {
     return kf.predict();
 }
 
-void KalmanOCV::update(detectionprops det) {
-    cv::Mat measurement = (cv::Mat_<float>(4, 1) << det.barycenter.x,
-                           det.barycenter.y, det.height, det.width);
-    kf.correct(measurement);
-}
+void KalmanOCV::update(const cv::Mat &meas) { kf.correct(meas); }
 
 #ifdef KALMAN_ACCEL
 KalmanHLS::KalmanHLS() {}

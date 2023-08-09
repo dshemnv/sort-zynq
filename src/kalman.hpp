@@ -8,7 +8,7 @@
 #include "xf_kalmanfilter.hpp"
 #endif
 #ifndef KF_N
-#define KF_N 8
+#define KF_N 7
 #endif
 #ifndef KF_M
 #define KF_M 4
@@ -29,6 +29,19 @@ struct kalmanConfig {
     cv::Mat Q; // Process noise uncertainty
     cv::Mat P; // Estimate uncertainty
     cv::Mat R; // Measurment uncertainty
+
+    void printConfig() {
+        std::cout << "F=" << std::endl;
+        std::cout << F << std::endl;
+        std::cout << "H=" << std::endl;
+        std::cout << H << std::endl;
+        std::cout << "Q=" << std::endl;
+        std::cout << Q << std::endl;
+        std::cout << "P=" << std::endl;
+        std::cout << P << std::endl;
+        std::cout << "R=" << std::endl;
+        std::cout << R << std::endl;
+    }
 };
 
 struct kalmanParams {
@@ -60,10 +73,12 @@ class KalmanBase {
 
   public:
     virtual const cv::Mat &predict()                      = 0;
-    virtual void update(detectionprops detection)         = 0;
+    virtual void update(const cv::Mat &meas)              = 0;
     virtual void load(kalmanConfig config)                = 0;
     virtual void init(cv::Mat initialEstimateUncertainty) = 0;
     virtual kalmanConfig dump()                           = 0;
+    virtual void setState(const cv::Mat &newState)        = 0;
+    virtual const cv::Mat &getState()                     = 0;
     kalmanParams getParams();
     void setParams(kalmanParams params);
 };
@@ -74,12 +89,15 @@ class KalmanOCV : public KalmanBase {
 
   public:
     KalmanOCV(kalmanParams params);
+    KalmanOCV(int dynamParams, int measureParams, int controlParams);
     KalmanOCV();
     ~KalmanOCV();
     const cv::Mat &predict();
-    void update(detectionprops detection);
+    void update(const cv::Mat &meas);
     void load(kalmanConfig config);
     void init(cv::Mat initialEstimateUncertainty);
+    const cv::Mat &getState();
+    void setState(const cv::Mat &newState);
     kalmanConfig dump();
 };
 
@@ -101,7 +119,7 @@ class KalmanEigen : public KalmanBase {
     ~KalmanEigen(){};
     Eigen::Matrix<float, N_STATES, N_MEAS> K();
     const cv::Mat &predict();
-    void update(detectionprops detection);
+    void update(const cv::Mat &meas);
     void load(kalmanConfig config);
     void init(cv::Mat initialEstimateUncertainty);
     kalmanConfig dump();
@@ -125,9 +143,9 @@ const cv::Mat &KalmanEigen<N_STATES, N_MEAS>::predict() {
 }
 
 template <size_t N_STATES, size_t N_MEAS>
-void KalmanEigen<N_STATES, N_MEAS>::update(detectionprops detection) {
-    Eigen::Vector4f meas(detection.barycenter.x, detection.barycenter.y,
-                         detection.height, detection.width);
+void KalmanEigen<N_STATES, N_MEAS>::update(const cv::Mat &meas) {
+    Eigen::MatrixXf measure;
+    cv::cv2eigen<float>(meas, measure);
 
     Eigen::MatrixXf gain = K();
     Eigen::MatrixXf diag = Eigen::MatrixXf::Identity(N_STATES, N_STATES);
@@ -162,6 +180,30 @@ kalmanConfig KalmanEigen<N_STATES, N_MEAS>::dump() {
     cv::eigen2cv<float>(P, config.P);
     return config;
 }
+
+class KalmanCreator {
+  public:
+    virtual ~KalmanCreator(){};
+    virtual KalmanBase *create(int dynamParams, int measureParams,
+                               int controlParams = 0) const = 0;
+};
+
+class KalmanOCVCreator : public KalmanCreator {
+  public:
+    KalmanBase *create(int dynamParams, int measureParams,
+                       int controlParams = 0) const override {
+        return new KalmanOCV(dynamParams, measureParams, controlParams);
+    };
+    ~KalmanOCVCreator(){};
+};
+
+template <size_t N_STATES, size_t N_MEAS>
+class KalmanEigenCreator : public KalmanCreator {
+  public:
+    KalmanBase *create() const override {
+        return new KalmanEigen<N_STATES, N_MEAS>;
+    }
+};
 
 #ifdef KALMAN_ACCEL
 class KalmanHLS : public KalmanBase {

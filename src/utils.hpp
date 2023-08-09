@@ -32,4 +32,14 @@
 void decomposeInUDU(const cv::Mat &M, cv::Mat *U, cv::Mat *D);
 void mat2FloatPtr(cv::Mat *mat, float *data_ptr);
 void floatPtr2Mat(cv::Mat *mat, float *data_ptr);
+
+template <class T> bool findValueInMat(const cv::Mat &mat, T value) {
+    for (int i = 0; i < mat.rows; i++) {
+        const T *row = mat.ptr<T>(i);
+        if (std::find(row, row + mat.cols, value) != row + mat.cols) {
+            return true;
+        }
+    }
+    return false;
+}
 #endif

@@ -8,7 +8,8 @@ class SolverBase {
     std::string name;
 
   public:
-    virtual void solve(const cv::Mat &costMat, cv::Mat &result) = 0;
+    virtual void solve(const cv::Mat &costMat, cv::Mat &result,
+                       cv::Mat &indexes) = 0;
 };
 
 class AuctionNaive : public SolverBase {
@@ -25,7 +26,7 @@ class AuctionNaive : public SolverBase {
     AuctionNaive();
     AuctionNaive(double eps);
     ~AuctionNaive();
-    void solve(const cv::Mat &costMat, cv::Mat &result);
+    void solve(const cv::Mat &costMat, cv::Mat &result, cv::Mat &indexes);
 };
 
 #endif
