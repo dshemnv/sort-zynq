@@ -13,11 +13,14 @@ struct Metadata {
     double y;
     std::string label;
     double probability;
+    cv::Scalar color;
 
     Metadata(double x, double y, double height, double width,
              const std::string &label, double probability)
         : x(x), y(y), height(height), width(width), label(label),
-          probability(probability) {}
+          probability(probability) {
+        color = cv::Scalar(0, 255, 0);
+    }
 
     Metadata &operator=(const Metadata &det) {
         x           = det.x;
@@ -26,11 +29,16 @@ struct Metadata {
         width       = det.width;
         label       = det.label;
         probability = det.probability;
+        color       = det.color;
         return *this;
     }
     cv::Mat toBbMat() {
-        return (cv::Mat_<double>(4, 1) << x - (width / 2), y - (height / 2),
-                x + (width / 2), y + (height / 2));
+        // clang-format off
+         return (cv::Mat_<double>(4, 1) << x - (width  / 2.0), 
+                                           y - (height / 2.0),
+                                           x + (width  / 2.0),
+                                           y + (height / 2.0));
+// clang-format on       
     }
     const cv::Mat toSort() {
         double s = width * height;
@@ -40,12 +48,15 @@ struct Metadata {
     }
     const cv::Rect toBb() {
         cv::Rect bb;
-        bb.x      = x - (width / 2);
-        bb.y      = y - (height / 2);
+        bb.x      = x - (width / 2.0);
+        bb.y      = y - (height / 2.0);
         bb.width  = width;
         bb.height = height;
 
         return bb;
+    }
+    void setColor(const cv::Scalar &col){
+      color = col;
     }
 };
 

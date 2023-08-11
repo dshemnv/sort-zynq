@@ -1,6 +1,7 @@
 
 #include "acqsys.hpp"
 #include "detsys.hpp"
+#include "utils.hpp"
 #include <opencv2/imgproc.hpp>
 #include <opencv2/opencv.hpp>
 
@@ -22,5 +23,6 @@ class GUI {
                 const cv::Scalar &color);
     void drawFromDetections(std::vector<Metadata> &dets);
     int nextFrame(cv::Mat *mat);
+    void addFPS(int fps, const std::string &text, const cv::Point &pos);
     void show();
 };

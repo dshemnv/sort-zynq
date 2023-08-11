@@ -41,3 +41,17 @@ void floatPtr2Mat(cv::Mat *mat, float *data_ptr) {
     }
     mat->reshape(0, origSize.height);
 }
+
+bool hasNan(const cv::Mat &mat) {
+    cv::Mat tmp = mat.clone();
+    tmp.convertTo(tmp, CV_32F);
+    cv::patchNaNs(tmp, -1.0);
+    for (int i = 0; i < tmp.rows; i++) {
+        for (int j = 0; j < tmp.cols; j++) {
+            if (tmp.at<float>(i, j) == -1.0) {
+                return true;
+            }
+        }
+    }
+    return false;
+}

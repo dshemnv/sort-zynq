@@ -3,13 +3,14 @@
 #include "genboxes.hpp"
 #include <opencv2/opencv.hpp>
 
-typedef struct {
+// TODO: Maybe use a simple array instead ?
+struct detectionprops {
     int height;
     int width;
     cv::Point2f barycenter;
-    const char *label;
+    const std::string label;
     float probability;
-} detectionprops;
+};
 
 void printDetection(detectionprops det);
 detectionprops detpropFromBox(Box &box, const char *label, float probability);

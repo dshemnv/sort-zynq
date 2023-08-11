@@ -56,7 +56,7 @@ struct kalmanBuf {
     cv::Mat cv_mat;
     size_t size;
     cl::Buffer ocl_buffer;
-    float *data_ptr;
+    double *data_ptr;
     void extactData(destination dest) {
         if (dest == DATA_PTR) {
             mat2FloatPtr(&cv_mat, data_ptr);
@@ -104,12 +104,12 @@ class KalmanOCV : public KalmanBase {
 template <size_t N_STATES, size_t N_MEAS>
 class KalmanEigen : public KalmanBase {
   private:
-    Eigen::Matrix<float, N_STATES, N_STATES> F;
-    Eigen::Matrix<float, N_MEAS, N_STATES> H;
-    Eigen::Matrix<float, N_STATES, N_STATES> Q;
-    Eigen::Matrix<float, N_MEAS, N_MEAS> R;
-    Eigen::Matrix<float, N_STATES, N_STATES> P;
-    Eigen::Vector<float, N_STATES> X;
+    Eigen::Matrix<double, N_STATES, N_STATES> F;
+    Eigen::Matrix<double, N_MEAS, N_STATES> H;
+    Eigen::Matrix<double, N_STATES, N_STATES> Q;
+    Eigen::Matrix<double, N_MEAS, N_MEAS> R;
+    Eigen::Matrix<double, N_STATES, N_STATES> P;
+    Eigen::Vector<double, N_STATES> X;
     cv::Mat output;
 
   public:
@@ -117,19 +117,33 @@ class KalmanEigen : public KalmanBase {
     KalmanEigen(kalmanParams params){};
     KalmanEigen(){};
     ~KalmanEigen(){};
-    Eigen::Matrix<float, N_STATES, N_MEAS> K();
+    Eigen::Matrix<double, N_STATES, N_MEAS> K();
     const cv::Mat &predict();
     void update(const cv::Mat &meas);
     void load(kalmanConfig config);
     void init(cv::Mat initialEstimateUncertainty);
+    const cv::Mat &getState();
+    void setState(const cv::Mat &newState);
     kalmanConfig dump();
 };
 
 template <size_t N_STATES, size_t N_MEAS>
-Eigen::Matrix<float, N_STATES, N_MEAS> KalmanEigen<N_STATES, N_MEAS>::K() {
-    Eigen::MatrixXf tmp1 = H * P * H.transpose() + R;
-    Eigen::MatrixXf gain = P * H.transpose() * tmp1.inverse();
+Eigen::Matrix<double, N_STATES, N_MEAS> KalmanEigen<N_STATES, N_MEAS>::K() {
+    Eigen::MatrixXd tmp1 = H * P * H.transpose() + R;
+    Eigen::MatrixXd gain = P * H.transpose() * tmp1.inverse();
     return gain;
+}
+
+template <size_t N_STATES, size_t N_MEAS>
+const cv::Mat &KalmanEigen<N_STATES, N_MEAS>::getState() {
+    cv::Mat state;
+    cv::eigen2cv<double>(X, state);
+    return state;
+}
+
+template <size_t N_STATES, size_t N_MEAS>
+void KalmanEigen<N_STATES, N_MEAS>::setState(const cv::Mat &newState) {
+    cv::cv2eigen(newState, X);
 }
 
 template <size_t N_STATES, size_t N_MEAS>
@@ -138,19 +152,19 @@ const cv::Mat &KalmanEigen<N_STATES, N_MEAS>::predict() {
     X = F * X;
     P = F * P * F.transpose() + Q;
 
-    cv::eigen2cv<float>(X, output);
+    cv::eigen2cv<double>(X, output);
     return output;
 }
 
 template <size_t N_STATES, size_t N_MEAS>
 void KalmanEigen<N_STATES, N_MEAS>::update(const cv::Mat &meas) {
-    Eigen::MatrixXf measure;
-    cv::cv2eigen<float>(meas, measure);
+    Eigen::MatrixXd measure;
+    cv::cv2eigen<double>(meas, measure);
 
-    Eigen::MatrixXf gain = K();
-    Eigen::MatrixXf diag = Eigen::MatrixXf::Identity(N_STATES, N_STATES);
+    Eigen::MatrixXd gain = K();
+    Eigen::MatrixXd diag = Eigen::MatrixXd::Identity(N_STATES, N_STATES);
 
-    Eigen::Matrix<float, N_STATES, N_STATES> U = diag - gain * H;
+    Eigen::Matrix<double, N_STATES, N_STATES> U = diag - gain * H;
 
     X = X + gain * (meas - H * X);
     P = U * P * U.transpose() + gain * R * gain.transpose();
@@ -158,26 +172,26 @@ void KalmanEigen<N_STATES, N_MEAS>::update(const cv::Mat &meas) {
 
 template <size_t N_STATES, size_t N_MEAS>
 void KalmanEigen<N_STATES, N_MEAS>::load(kalmanConfig config) {
-    cv::cv2eigen<float>(config.F, F);
-    cv::cv2eigen<float>(config.H, H);
-    cv::cv2eigen<float>(config.Q, Q);
-    cv::cv2eigen<float>(config.R, R);
+    cv::cv2eigen<double>(config.F, F);
+    cv::cv2eigen<double>(config.H, H);
+    cv::cv2eigen<double>(config.Q, Q);
+    cv::cv2eigen<double>(config.R, R);
 }
 
 template <size_t N_STATES, size_t N_MEAS>
 void KalmanEigen<N_STATES, N_MEAS>::init(cv::Mat initialEstimateUncertainty) {
     X = Eigen::VectorXf::Zero(N_STATES);
-    cv::cv2eigen<float>(initialEstimateUncertainty, P);
+    cv::cv2eigen<double>(initialEstimateUncertainty, P);
 }
 
 template <size_t N_STATES, size_t N_MEAS>
 kalmanConfig KalmanEigen<N_STATES, N_MEAS>::dump() {
     kalmanConfig config;
-    cv::eigen2cv<float>(F, config.F);
-    cv::eigen2cv<float>(H, config.H);
-    cv::eigen2cv<float>(Q, config.Q);
-    cv::eigen2cv<float>(R, config.R);
-    cv::eigen2cv<float>(P, config.P);
+    cv::eigen2cv<double>(F, config.F);
+    cv::eigen2cv<double>(H, config.H);
+    cv::eigen2cv<double>(Q, config.Q);
+    cv::eigen2cv<double>(R, config.R);
+    cv::eigen2cv<double>(P, config.P);
     return config;
 }
 
@@ -200,10 +214,16 @@ class KalmanOCVCreator : public KalmanCreator {
 template <size_t N_STATES, size_t N_MEAS>
 class KalmanEigenCreator : public KalmanCreator {
   public:
-    KalmanBase *create() const override {
-        return new KalmanEigen<N_STATES, N_MEAS>;
-    }
+    KalmanBase *create(int dynamStates, int measureStates) const override;
+    ~KalmanEigenCreator(){};
 };
+
+template <size_t N_STATES, size_t N_MEAS>
+inline KalmanBase *
+KalmanEigenCreator<N_STATES, N_MEAS>::create(int dynamStates,
+                                             int measureStates) const {
+    return new KalmanEigen<N_STATES, N_MEAS>();
+}
 
 #ifdef KALMAN_ACCEL
 class KalmanHLS : public KalmanBase {

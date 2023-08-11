@@ -79,9 +79,9 @@ std::vector<Metadata> MOTData::getDetections(int frameNum) {
     std::vector<Metadata> detProps;
 
     for (std::vector<motdet>::iterator it = currentBbs.begin();
-         it != currentBbs.end(); ++it) {
+         it < currentBbs.end(); it++) {
         Metadata det(it->xtl + (it->width / 2), it->ytl + (it->height / 2),
-                     it->height, it->width, "person", 50);
+                     it->height, it->width, std::string("person"), 50);
         detProps.push_back(det);
     }
     return detProps;

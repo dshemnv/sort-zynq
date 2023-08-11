@@ -29,16 +29,23 @@ void GUI::drawBb(const cv::Rect &bb, const std::string &label,
     cv::Size textSize =
         cv::getTextSize(label, font, fontScale, thickness, nullptr);
 
+    cv::Rect txtBg(bb.x, bb.y - textSize.height, textSize.width,
+                   textSize.height);
+
+    cv::rectangle(currentFrame, txtBg, cv::Scalar::all(255), -1);
+
     cv::Point position = bb.tl() + cv::Point(0, -textSize.height / 4);
     cv::putText(currentFrame, label, position, font, fontScale, color,
                 thickness);
 }
 
 void GUI::drawFromDetections(std::vector<Metadata> &dets) {
-    for (std::vector<Metadata>::iterator it = dets.begin(); it != dets.end();
-         ++it) {
+    // LOG_INFO("SORT BBS");
+    for (std::vector<Metadata>::iterator it = dets.begin(); it < dets.end();
+         it++) {
 
-        drawBb(it->toBb(), it->label, cv::Scalar(0, 0, 0));
+        drawBb(it->toBb(), it->label, it->color);
+        // std::cout << it->toBb() << std::endl;
     }
 }
 
@@ -47,15 +54,22 @@ int GUI::nextFrame(cv::Mat *frame) {
         currentFrame = aqsys->getFrame();
         int frameNum = aqsys->index();
         if (showBb) {
+            // LOG_INFO("MOT BBS");
             std::vector<cv::Rect> bb = detsys->getBb(frameNum);
             for (std::vector<cv::Rect>::iterator it = bb.begin();
                  it != bb.end(); ++it) {
                 drawBb(*it, "test", cv::Scalar(255, 255, 255));
+                // std::cout << *it << std::endl;
             }
         }
         return 0;
     }
     return 1;
+}
+
+void GUI::addFPS(int fps, const std::string &text, const cv::Point &pos) {
+    cv::putText(currentFrame, text + std::to_string(fps), pos,
+                cv::FONT_HERSHEY_SIMPLEX, 2, cv::Scalar(0, 0, 255), 2);
 }
 
 void GUI::show() { cv::imshow(name, currentFrame); }

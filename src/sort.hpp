@@ -8,7 +8,9 @@ class Tracklet {
 
   private:
     KalmanBase *tracker;
-    std::queue<Metadata> history;
+    std::queue<Metadata> predictedHistory;
+    std::queue<Metadata> addedHistory;
+    cv::Scalar color;
 
   public:
     Tracklet(KalmanBase *tracker, Metadata &firstDetection);
@@ -21,6 +23,7 @@ class Tracklet {
     const cv::Mat &prediction();
     const cv::Mat &getState();
     Metadata getLatestDetection();
+    const cv::Scalar &getColor();
     void update(Metadata &detection);
 };
 
@@ -30,6 +33,9 @@ class Sort {
     int minHits;
     double iouThreshold;
     int frameCounter;
+    bool save;
+
+    std::stringstream trackingResult;
 
     std::vector<Tracklet> tracklets;
     SolverBase *lsapSolver;
@@ -46,9 +52,9 @@ class Sort {
     void setIOUSolver(SolverBase *solver);
     void update(std::vector<Metadata> detections);
     bool isDead(Tracklet &track);
-    cv::Mat detToSort(Metadata &detection);
-    cv::Mat stateToPos(const cv::Mat &state);
-    Metadata sortToDet(Metadata &latestDet, const cv::Mat &currentPos, int id);
+    void saveResults();
+    void writeTrackingResults(const std::string &filename);
+    int getFrameCnt();
     std::vector<Metadata> getCorrectedDetections();
     void associateDetToTrack(std::vector<Metadata> &detections,
                              const cv::Mat &predictedPos,
@@ -56,3 +62,7 @@ class Sort {
                              std::vector<Metadata> &unmatchedDetections,
                              std::vector<std::vector<int>> &matched);
 };
+
+cv::Mat detToSort(Metadata &detection);
+cv::Mat stateToPos(const cv::Mat &state);
+Metadata sortToDet(Metadata &latestDet, const cv::Mat &currentPos, int id);
