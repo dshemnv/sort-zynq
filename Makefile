@@ -107,9 +107,9 @@ endif
 endif
 
 # Host app building, when compiler changes
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp $(CXX)
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
 	@mkdir -p $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) -c $(filter-out $(CXX),$<) -o $@
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/xcl2.o: $(VITIS_VISION_LIB_DIR)/ext/xcl2/xcl2.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@

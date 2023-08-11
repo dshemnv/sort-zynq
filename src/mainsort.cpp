@@ -5,13 +5,22 @@
 #include <opencv2/opencv.hpp>
 
 int main(int argc, char const *argv[]) {
+    std::string mot_dataset;
+
+    if (argc < 2) {
+        LOG_ERR("Please provide path to MOT dataset.");
+        exit(EXIT_FAILURE);
+    }
+
+    mot_dataset = argv[1];
+
     Sort sort(1, 3, 0.3);
     // sort.saveResults();
     KalmanOCVCreator ocv_kalman;
     AuctionNaive auction(0.001);
     sort.setTracker(&ocv_kalman);
     sort.setIOUSolver(&auction);
-    MOTData data("/home/root/MOT15/test/Venice-1");
+    MOTData data(mot_dataset);
 
     GUI gui(data, data.getAqsys(), "test");
 
