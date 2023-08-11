@@ -1,8 +1,6 @@
----
 # We'll use defaults from the LLVM style, but with 4 columns indentation.
 BasedOnStyle: LLVM
 IndentWidth: 4
----
 Language: Cpp
 # Force pointers to the type for C++.
 DerivePointerAlignment: false
@@ -11,4 +9,3 @@ AlignArrayOfStructures: Left
 AlignConsecutiveAssignments: Consecutive
 ColumnLimit: 80
 AlignAfterOpenBracket: Align
----

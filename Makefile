@@ -4,10 +4,11 @@ $(error [ERROR]: HOST_ARCH variable is not correctly set. Set it to x86 or aarch
 endif
 endif
 
-# defaults, if not set
+# --------------------------- Defaults, if not set --------------------------- #
 TARGET ?= sw_emu
 PLATFORM ?= /opt/xilinx/xilinx_zcu102_base_202120_1/xilinx_zcu102_base_202120_1.xpfm
 PLATFORM_NAME = $(strip $(patsubst %.xpfm, % , $(shell basename $(PLATFORM))))
+HLS ?= off
 
 # ifeq ($(TARGET), sw_emu)
 # $(info Target is software emulation, setting HOST_ARCH to x86)
@@ -16,7 +17,6 @@ PLATFORM_NAME = $(strip $(patsubst %.xpfm, % , $(shell basename $(PLATFORM))))
 
 APP_NAME := kalman
 BUILD_DIR := build/$(HOST_ARCH)/$(TARGET)
-$(info $(BUILD_DIR))
 
 SRC_DIR := src
 KERNEL_DIR := hls
@@ -24,7 +24,7 @@ VITIS_VISION_LIB_DIR := extern/vitis_lib/vision
 
 # sets various useful variables, if using v++
 ifeq ($(filter sw, $(TARGET)),)
-ifneq ($(filter accel package app debug-all debug-app, $(MAKECMDGOALS)),)
+ifneq ($(filter accel package app debug-all debug-app vivado, $(MAKECMDGOALS)),)
 include utils.mk
 endif
 endif
@@ -37,6 +37,11 @@ else ifeq ($(HOST_ARCH), x86)
 CXX := g++
 endif
 
+ifeq ($(HOST_ARCH), aarch64)
+OPT_FLAGS := -march=armv8-a -mtune=cortex-a53
+else
+OPT_FLAGS := -march=native -mtune=native
+endif
 # ------------------------------- Temp folders ------------------------------- #
 
 TEMP_DIR := tmp/$(TARGET)_$(PLATFORM_NAME)
@@ -47,20 +52,28 @@ TEMP_LOG_DIR := $(TEMP_DIR)/logs
 
 IDIRS := src
 IDIRS += extern/eigen
+IDIRS += /home/dshem/Documents/these/ressources/papers/rapido2023/experiments/auction_c/include
 XF_VIDEO_IDIR := $(VITIS_VISION_LIB_DIR)/L1/include/video
+
 ifeq ($(HOST_ARCH), aarch64)
-IDIRS += $(SYSROOT)/usr/include/xrt $(XILINX_HLS)/include $(VITIS_VISION_LIB_DIR)/ext/xcl2 $(VITIS_VISION_LIB_DIR)/L1/include $(SYSROOT)/usr/include/opencv4 $(XF_VIDEO_IDIR) $(KERNEL_DIR)
+IDIRS +=  $(SYSROOT)/usr/include/opencv4 $(SYSROOT)/usr/include
+endif
+ifeq ($(HLS), on)
+IDIRS += $(SYSROOT)/usr/include/xrt $(XILINX_HLS)/include $(VITIS_VISION_LIB_DIR)/ext/xcl2 $(VITIS_VISION_LIB_DIR)/L1/include $(XF_VIDEO_IDIR) $(KERNEL_DIR)
 endif
 
 # generate include flags
 IFLAGS := $(addprefix -I, $(IDIRS))
 
-# generate srcs 
-HOST_SRCS = $(wildcard $(SRC_DIR)/*.cpp)
+# generate srcs and filter out the main files, those will be added based on target
+ALL_MAINS := $(wildcard $(SRC_DIR)/main*.cpp)
+HOST_SRCS := $(wildcard $(SRC_DIR)/*.cpp)
 
 ifeq ($(HOST_ARCH), aarch64)
-# HOST_SRCS += $(wildcard $(KERNEL_DIR)/*.cpp)
+ifeq ($(HLS), on)
+HOST_SRCS += $(wildcard $(KERNEL_DIR)/*.cpp)
 HOST_SRCS += $(VITIS_VISION_LIB_DIR)/ext/xcl2/xcl2.cpp
+endif
 endif
 
 HOST_SRCS_FILES_ONLY := $(notdir $(HOST_SRCS))
@@ -78,24 +91,33 @@ ifeq ($(HOST_ARCH), x86)
 CXXFLAGS += $(shell pkg-config --cflags opencv4)
 LDFLAGS += $(shell pkg-config --libs opencv4)
 else ifeq ($(HOST_ARCH), aarch64)
-CXXFLAGS += -I$(SYSROOT)/usr/include/opencv4 -I$(SYSROOT)/usr/include -I$(SYSROOT)/usr/include/xrt
-CXXFLAGS += -DKALMAN_ACCEL --sysroot=$(SYSROOT) 
-LDFLAGS += -L$(SYSROOT)/usr/lib -L$(SYSROOT)/lib -lxrt_coreutil -lxilinxopencl --sysroot=$(SYSROOT)
+CXXFLAGS += --sysroot=$(SYSROOT)
+ifeq ($(HLS), on)
+CXXFLAGS += -DKALMAN_ACCEL 
+endif
+LDFLAGS += -L$(SYSROOT)/usr/lib -L$(SYSROOT)/lib --sysroot=$(SYSROOT)
+ifeq ($(HLS), on)
+LDFLAGS += -lxrt_coreutil -lxilinxopencl
+endif 
 LDFLAGS += -lopencv_videoio -lopencv_imgcodecs -lopencv_core -lopencv_imgproc -lopencv_features2d -lopencv_flann -lopencv_video -lopencv_calib3d -lopencv_highgui
-LIBRARY_PATH := $(OPENCV_LIB):$(LD_LIBRARY_PATH):$(XILINX_XRT)/lib
+LIBRARY_PATH := $(OPENCV_LIB):$(LD_LIBRARY_PATH)
+ifeq ($(HLS), on)
+LIBRARY_PATH := $(LD_LIBRARY_PATH):$(XILINX_XRT)/lib
+endif
 endif
 
-# Host app building
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
+# Host app building, when compiler changes
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp $(CXX)
 	@mkdir -p $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -c $(filter-out $(CXX),$<) -o $@
 
 $(BUILD_DIR)/xcl2.o: $(VITIS_VISION_LIB_DIR)/ext/xcl2/xcl2.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+# Only links the selected application
 $(BUILD_DIR)/$(APP_NAME): $(OBJS)
 	@mkdir -p $(BUILD_DIR)
-	$(CXX) $(OBJS) $(LDFLAGS) -o $@
+	$(CXX) $(filter-out $(subst $(SRC_DIR)/,$(BUILD_DIR)/,$(ALL_MAINS:%.cpp=%.o)),$(OBJS)) $(BUILD_DIR)/$(MAIN_FILE:%.cpp=%.o) $(LDFLAGS) -o $@
 
 # ---------------------------- HLS Kernel section ---------------------------- #
 
@@ -137,10 +159,21 @@ $(BUILD_DIR)/sd_card/sd_card.img: $(XCLBIN_FILES) $(BUILD_DIR)/$(APP_NAME)
 
 # ------------------------------- Named targets ------------------------------ #
 .PHONY: app
+app: CXXFLAGS += $(OPT_FLAGS)
 app: $(BUILD_DIR)/$(APP_NAME)
+
+.PHONY: sort-app
+sort-app: APP_NAME := sort
+sort-app: MAIN_FILE := mainsort.cpp
+sort-app: SRC += MAIN_FILE
+sort-app: app
 
 .PHONY: accel
 accel: $(XCLBIN_FILES)
+
+.PHONY: vivado
+vivado: accel
+	$(VPP) -t hw --link --platform $(PLATFORM) -o $(XCLBIN_FILES_PKG) $(XCLBIN_OBJS) --temp_dir $(TEMP_DIR) --report_dir $(TEMP_REPORT_DIR) --log_dir $(TEMP_LOG_DIR) --save-temps --advanced.misc solution_name=link --connectivity.nk kalmanfilter_accel:1:kalman_filter_accel_1 --interactive impl
 
 .PHONY: debug-accel
 debug-accel: VPP_FLAGS += -g
@@ -149,7 +182,7 @@ debug-accel: accel
 
 .PHONY: debug-app
 debug-app: CXXFLAGS += -g3 -O0
-debug-app: app 
+debug-app: app
 
 .PHONY: debug-all
 debug-all: debug-accel debug-app
