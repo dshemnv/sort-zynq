@@ -4,3 +4,6 @@
 [submodule "extern/eigen"]
 	path = extern/eigen
 	url = https://gitlab.com/libeigen/eigen.git
+[submodule "extern/vitis_ai"]
+	path = extern/vitis_ai
+	url = https://github.com/Xilinx/Vitis-AI
