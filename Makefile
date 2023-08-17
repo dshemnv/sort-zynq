@@ -37,11 +37,18 @@ else ifeq ($(HOST_ARCH), x86)
 CXX := g++
 endif
 
+ifndef DEBUG
 ifeq ($(HOST_ARCH), aarch64)
-OPT_FLAGS := -march=armv8-a -mtune=cortex-a53
+OPT_FLAGS := -mcpu=cortex-a72.cortex-a53 -march=armv8-a+crc -fstack-protector-strong  -D_FORTIFY_SOURCE=2 -Wformat -Wformat-security -Werror=format-security -O2
 else
 OPT_FLAGS := -march=native -mtune=native
 endif
+else
+$(info debug is $(DEBUG))
+OPT_FLAGS := -g3 -O0
+$(info $(OPT_FLAGS))
+endif
+
 # ------------------------------- Temp folders ------------------------------- #
 
 TEMP_DIR := tmp/$(TARGET)_$(PLATFORM_NAME)
@@ -56,7 +63,8 @@ IDIRS += /home/dshem/Documents/these/ressources/papers/rapido2023/experiments/au
 XF_VIDEO_IDIR := $(VITIS_VISION_LIB_DIR)/L1/include/video
 
 ifeq ($(HOST_ARCH), aarch64)
-IDIRS +=  $(SYSROOT)/usr/include/opencv4 $(SYSROOT)/usr/include
+IDIRS +=  $(SYSROOT)/usr/include/opencv4 
+# IDIRS += $(SYSROOT)/usr/include
 endif
 ifeq ($(HLS), on)
 IDIRS += $(SYSROOT)/usr/include/xrt $(XILINX_HLS)/include $(VITIS_VISION_LIB_DIR)/ext/xcl2 $(VITIS_VISION_LIB_DIR)/L1/include $(XF_VIDEO_IDIR) $(KERNEL_DIR)
@@ -67,7 +75,8 @@ IFLAGS := $(addprefix -I, $(IDIRS))
 
 # generate srcs and filter out the main files, those will be added based on target
 ALL_MAINS := $(wildcard $(SRC_DIR)/main*.cpp)
-HOST_SRCS := $(wildcard $(SRC_DIR)/*.cpp)
+HOST_SRCS := $(filter-out $(ALL_MAINS), $(wildcard $(SRC_DIR)/*.cpp))
+# HOST_SRCS := $(wildcard $(SRC_DIR)/*.cpp)
 
 ifeq ($(HOST_ARCH), aarch64)
 ifeq ($(HLS), on)
@@ -81,7 +90,7 @@ OBJS := $(addprefix $(BUILD_DIR)/, $(HOST_SRCS_FILES_ONLY:.cpp=.o))
 DEP_FILES := $(OBJS:%.o=%.d)
 
 # common compile flags
-CXXFLAGS += $(IFLAGS) -std=c++14 -O3 -Wall -MMD -MP -Wno-unknown-pragmas -Wno-unused-label -fmessage-length=0 
+CXXFLAGS += $(IFLAGS) -std=c++17 -Wall -MMD -MP -Wno-unknown-pragmas -Wno-unused-label -fmessage-length=0 
 LDFLAGS += -pthread -Wl,--as-needed
 VPP_FLAGS += -t $(TARGET) --platform $(PLATFORM) --save-temps
 VPP_LDFLAGS += --optimize 2 -R 2
@@ -95,10 +104,11 @@ CXXFLAGS += --sysroot=$(SYSROOT)
 ifeq ($(HLS), on)
 CXXFLAGS += -DKALMAN_ACCEL 
 endif
-LDFLAGS += -L$(SYSROOT)/usr/lib -L$(SYSROOT)/lib --sysroot=$(SYSROOT)
+LDFLAGS += -L$(SYSROOT)/usr/lib -L$(SYSROOT)/lib
+LDFLAGS += --sysroot=$(SYSROOT)
 ifeq ($(HLS), on)
 LDFLAGS += -lxrt_coreutil -lxilinxopencl
-endif 
+endif
 LDFLAGS += -lopencv_videoio -lopencv_imgcodecs -lopencv_core -lopencv_imgproc -lopencv_features2d -lopencv_flann -lopencv_video -lopencv_calib3d -lopencv_highgui
 LIBRARY_PATH := $(OPENCV_LIB):$(LD_LIBRARY_PATH)
 ifeq ($(HLS), on)
@@ -108,15 +118,27 @@ endif
 
 # Host app building, when compiler changes
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
-	@mkdir -p $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(OBJS): |$(BUILD_DIR)
+
+$(BUILD_DIR)/mainyolodpu.o: $(SRC_DIR)/mainyolodpu.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/mainsort.o: $(SRC_DIR)/mainsort.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/mainboxdemo.o: $(SRC_DIR)/mainboxdemo.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(BUILD_DIR):
+	@mkdir -p $(BUILD_DIR)
 
 $(BUILD_DIR)/xcl2.o: $(VITIS_VISION_LIB_DIR)/ext/xcl2/xcl2.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # Only links the selected application
-$(BUILD_DIR)/$(APP_NAME): $(OBJS)
-	@mkdir -p $(BUILD_DIR)
+$(BUILD_DIR)/$(APP_NAME): $(OBJS) $(BUILD_DIR)/$(MAIN_FILE:%.cpp=%.o)
 	$(CXX) $(filter-out $(subst $(SRC_DIR)/,$(BUILD_DIR)/,$(ALL_MAINS:%.cpp=%.o)),$(OBJS)) $(BUILD_DIR)/$(MAIN_FILE:%.cpp=%.o) $(LDFLAGS) -o $@
 
 # ---------------------------- HLS Kernel section ---------------------------- #
@@ -163,10 +185,14 @@ app: CXXFLAGS += $(OPT_FLAGS)
 app: $(BUILD_DIR)/$(APP_NAME)
 
 .PHONY: sort-app
-sort-app: APP_NAME := sort
 sort-app: MAIN_FILE := mainsort.cpp
-sort-app: SRC += MAIN_FILE
 sort-app: app
+
+.PHONY: yolo-app
+yolo-app: CXXFLAGS += -DDPUYOLO
+yolo-app: MAIN_FILE := mainyolodpu.cpp
+yolo-app: LDFLAGS += -lvitis_ai_library-yolov3 -lvitis_ai_library-dpu_task -lvitis_ai_library-xnnpp -lvitis_ai_library-model_config -lvitis_ai_library-math -lvart-util -lxir -pthread -ljson-c -lglog
+yolo-app: app
 
 .PHONY: accel
 accel: $(XCLBIN_FILES)
@@ -196,8 +222,6 @@ package: accel app $(BUILD_DIR)/sd_card/sd_card.img
 
 .PHOMY: clean-app
 clean-app:
-	@rm -f $(BUILD_DIR)/*.d
-	@rm -f $(BUILD_DIR)/*.o
 	@rm -f $(BUILD_DIR)/$(APP_NAME)
 
 .PHONY: clean-pkg

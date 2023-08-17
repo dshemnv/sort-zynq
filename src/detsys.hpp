@@ -4,6 +4,9 @@
 #include "detection.hpp"
 #include <glob.h>
 #include <opencv2/opencv.hpp>
+#ifdef DPUYOLO
+#include <vitis/ai/yolov3.hpp>
+#endif
 
 // Simple data structure that holds detection metadata
 struct Metadata {
@@ -33,12 +36,8 @@ struct Metadata {
         return *this;
     }
     cv::Mat toBbMat() {
-        // clang-format off
-         return (cv::Mat_<double>(4, 1) << x - (width  / 2.0), 
-                                           y - (height / 2.0),
-                                           x + (width  / 2.0),
-                                           y + (height / 2.0));
-// clang-format on       
+        return (cv::Mat_<double>(4, 1) << x - (width / 2.0), y - (height / 2.0),
+                x + (width / 2.0), y + (height / 2.0));
     }
     const cv::Mat toSort() {
         double s = width * height;
@@ -55,9 +54,7 @@ struct Metadata {
 
         return bb;
     }
-    void setColor(const cv::Scalar &col){
-      color = col;
-    }
+    void setColor(const cv::Scalar &col) { color = col; }
 };
 
 class DetSys {
@@ -65,7 +62,7 @@ class DetSys {
     virtual void start() = 0;
     virtual void stop()  = 0;
     virtual ~DetSys(){};
-    virtual std::vector<cv::Rect> getBb(int frameNum) = 0;
+    virtual std::vector<cv::Rect> getBb() = 0;
 };
 
 class MOTData : public DetSys {
@@ -86,13 +83,48 @@ class MOTData : public DetSys {
     MOTData(const std::string &folder);
     MOTData();
     ~MOTData();
-    std::vector<Metadata> getDetections(int frameNum);
+    std::vector<Metadata> getDetections();
     const std::string &getName();
     AqSysFiles &getAqsys();
-    std::vector<cv::Rect> getBb(int frameNum);
+    std::vector<cv::Rect> getBb();
     void load(const std::string &folder);
     void start();
     void stop();
 };
+
+static cv::Scalar getColor(int label) {
+    int c[3];
+    for (int i = 1, j = 0; i <= 9; i *= 3, j++) {
+        c[j] = ((label / i) % 3) * 127;
+    }
+    return cv::Scalar(c[2], c[1], c[0]);
+}
+
+#ifdef DPUYOLO
+class YOLODPU : public DetSys {
+  private:
+    std::vector<Metadata> currentDetections;
+    AqSys *aqsys;
+    std::unique_ptr<vitis::ai::YOLOv3> yoloInstance;
+    std::string label[20] = {
+        "aeroplane",   "bicycle", "bird",  "boat",      "bottle",
+        "bus",         "car",     "cat",   "chair",     "cow",
+        "diningtable", "dog",     "horse", "motorbike", "person",
+        "pottedplant", "sheep",   "sofa",  "train",     "tvmonitor"};
+
+  public:
+    YOLODPU(const std::string &modelName, bool needPreprocess);
+    YOLODPU(AqSys *aq);
+    ~YOLODPU();
+    void setYOLO(const std::string &modelName, bool needPreprocess);
+    void setAqsys(AqSys *aqsys);
+    void detect();
+    std::vector<Metadata> yoloResultToMetadata(vitis::ai::YOLOv3Result &result);
+    std::vector<Metadata> getDetections();
+    std::vector<cv::Rect> getBb();
+    void start();
+    void stop();
+};
+#endif
 
 #endif

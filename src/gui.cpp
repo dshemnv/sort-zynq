@@ -52,10 +52,9 @@ void GUI::drawFromDetections(std::vector<Metadata> &dets) {
 int GUI::nextFrame(cv::Mat *frame) {
     if (!aqsys->eof()) {
         currentFrame = aqsys->getFrame();
-        int frameNum = aqsys->index();
         if (showBb) {
             // LOG_INFO("MOT BBS");
-            std::vector<cv::Rect> bb = detsys->getBb(frameNum);
+            std::vector<cv::Rect> bb = detsys->getBb();
             for (std::vector<cv::Rect>::iterator it = bb.begin();
                  it != bb.end(); ++it) {
                 drawBb(*it, "test", cv::Scalar(255, 255, 255));

@@ -10,4 +10,4 @@ scp ${PROGRAM_PATH} root@${TARGET_IP}:/mnt/sd-mmcblk0p1
 
 echo "Starting GDB Server"
 
-ssh -t root@${TARGET_IP} "sh -c 'cd /mnt/sd-mmcblk0p1; gdbserver :${DEBUG_PORT} ./kalman'"
+ssh -t root@${TARGET_IP} "sh -c 'cd /mnt/sd-mmcblk0p1; export DISPLAY=:0; gdbserver :${DEBUG_PORT} ./kalman /home/root/MOT15/test/Venice-1'"

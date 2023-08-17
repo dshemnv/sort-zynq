@@ -73,8 +73,8 @@ MOTData::MOTData(const std::string &folder) {
 MOTData::MOTData() {}
 
 MOTData::~MOTData() {}
-std::vector<Metadata> MOTData::getDetections(int frameNum) {
-    std::vector<motdet> currentBbs = detections.at(frameNum);
+std::vector<Metadata> MOTData::getDetections() {
+    std::vector<motdet> currentBbs = detections.at(aqSys.index());
 
     std::vector<Metadata> detProps;
 
@@ -91,14 +91,14 @@ const std::string &MOTData::getName() { return datasetName; }
 
 AqSysFiles &MOTData::getAqsys() { return aqSys; }
 
-std::vector<cv::Rect> MOTData::getBb(int frameNum) {
+std::vector<cv::Rect> MOTData::getBb() {
     std::vector<cv::Rect> output;
 
     // if (frameNum == detections.size()) {
     //     return output;
     // }
 
-    std::vector<motdet> currentDetections = detections.at(frameNum);
+    std::vector<motdet> currentDetections = detections.at(aqSys.index());
 
     for (std::vector<motdet>::iterator it = currentDetections.begin();
          it != currentDetections.end(); ++it) {
@@ -121,3 +121,63 @@ void MOTData::load(const std::string &folder) {}
 void MOTData::start() {}
 
 void MOTData::stop() {}
+
+#ifdef DPUYOLO
+YOLODPU::YOLODPU(const std::string &modelName, bool needPreprocess) {
+    yoloInstance = vitis::ai::YOLOv3::create(modelName, needPreprocess);
+}
+
+YOLODPU::YOLODPU(AqSys *aq) : aqsys(aq) {}
+
+YOLODPU::~YOLODPU() {}
+
+void YOLODPU::setYOLO(const std::string &modelName, bool needPreprocess) {
+    yoloInstance = vitis::ai::YOLOv3::create(modelName, needPreprocess);
+}
+
+void YOLODPU::setAqsys(AqSys *aqsys) { this->aqsys = aqsys; }
+
+void YOLODPU::detect() {
+    cv::Mat frame                   = aqsys->getCurrentFrame();
+    vitis::ai::YOLOv3Result results = yoloInstance->run(frame);
+    currentDetections               = yoloResultToMetadata(results);
+}
+
+std::vector<Metadata>
+YOLODPU::yoloResultToMetadata(vitis::ai::YOLOv3Result &result) {
+    std::vector<Metadata> output;
+    int imgHeight = aqsys->getCurrentFrame().rows;
+    int imgWidth  = aqsys->getCurrentFrame().cols;
+    for (std::vector<vitis::ai::YOLOv3Result::BoundingBox>::iterator it =
+             result.bboxes.begin();
+         it < result.bboxes.end(); it++) {
+        double height = static_cast<double>(it->height * imgHeight);
+        double width  = static_cast<double>(it->width * imgWidth);
+        double x = static_cast<double>((it->x + (it->width / 2.0)) * imgWidth);
+        double y =
+            static_cast<double>((it->y + (it->height / 2.0)) * imgHeight);
+        double probability = static_cast<double>(it->score);
+        Metadata det(x, y, height, width, label[it->label], probability);
+        det.setColor(getColor(it->label));
+        output.push_back(det);
+    }
+    return output;
+}
+
+std::vector<Metadata> YOLODPU::getDetections() { return currentDetections; }
+
+std::vector<cv::Rect> YOLODPU::getBb() {
+    detect();
+    std::vector<cv::Rect> bbs;
+    for (std::vector<Metadata>::iterator it = currentDetections.begin();
+         it < currentDetections.end(); it++) {
+        bbs.push_back(it->toBb());
+    }
+    return bbs;
+    ;
+}
+
+void YOLODPU::stop() {}
+
+void YOLODPU::start() {}
+#endif
