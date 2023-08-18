@@ -25,3 +25,145 @@ const cv::Mat &AqSysFiles::getCurrentFrame() {
 }
 
 int AqSysFiles::index() { return (currentFrameIdx - 1); }
+
+AqSysJPEGFiles::AqSysJPEGFiles(const std::string &folder)
+    : AqSysFiles(folder) {}
+
+AqSysJPEGFiles::AqSysJPEGFiles() {}
+
+AqSysJPEGFiles::~AqSysJPEGFiles() {
+    for (auto it = rawImgBufers.begin(); it < rawImgBufers.end(); it++) {
+        tjFree(*it);
+    }
+}
+
+void AqSysJPEGFiles::addImgFile(const std::string &path) {
+    // Using C API for TurboJPEG
+
+    const char *colorspaceName[TJ_NUMCS] = {"RGB", "YCbCr", "GRAY", "CMYK",
+                                            "YCCK"};
+    FILE *jpegFile;
+    size_t jpegSize;
+    long size;
+
+    unsigned char *imgBuf  = NULL;
+    unsigned char *jpegBuf = NULL;
+
+    tjhandle tjInstance;
+
+    if ((jpegFile = fopen(path.c_str(), "rb")) == NULL) {
+        perror("Error opening image file");
+        bailout(imgBuf, jpegBuf, tjInstance);
+        exit(EXIT_FAILURE);
+    }
+    if (fseek(jpegFile, 0, SEEK_END) < 0 || ((size = ftell(jpegFile)) < 0) ||
+        fseek(jpegFile, 0, SEEK_SET) < 0) {
+        perror("Unable to determine input file size");
+        if (jpegFile)
+            fclose(jpegFile);
+        bailout(imgBuf, jpegBuf, tjInstance);
+        exit(EXIT_FAILURE);
+    }
+    if (size == 0) {
+        perror("Input file contains no data");
+        if (jpegFile)
+            fclose(jpegFile);
+        bailout(imgBuf, jpegBuf, tjInstance);
+        exit(EXIT_FAILURE);
+    }
+    jpegSize = size;
+    if ((jpegBuf = (unsigned char *)tjAlloc(jpegSize)) == NULL) {
+        perror("allocating JPEG buffer");
+        if (jpegFile)
+            fclose(jpegFile);
+        bailout(imgBuf, jpegBuf, tjInstance);
+        exit(EXIT_FAILURE);
+    }
+    if (fread(jpegBuf, jpegSize, 1, jpegFile) < 1) {
+        if (jpegFile)
+            fclose(jpegFile);
+        perror("reading input file");
+        bailout(imgBuf, jpegBuf, tjInstance);
+        exit(EXIT_FAILURE);
+    }
+    fclose(jpegFile);
+    jpegFile = NULL;
+
+    if ((tjInstance = tjInitDecompress()) == NULL) {
+        perror("initializing decompressor");
+        bailout(imgBuf, jpegBuf, tjInstance);
+        exit(EXIT_FAILURE);
+    }
+
+    // if (tj3Set(tjInstance, TJPARAM_FASTUPSAMPLE, 1) < 0) {
+    //     perror("setting TJPARAM_FASTUPSAMPLE");
+    //     exit(EXIT_FAILURE);
+    // }
+    // if (tj3Set(tjInstance, TJPARAM_FASTDCT, 1) < 0) {
+    //     perror("setting TJPARAM_FASTDCT");
+    //     exit(EXIT_FAILURE);
+    // }
+
+    int flags = 0;
+    flags |= TJFLAG_FASTUPSAMPLE;
+    flags |= TJFLAG_FASTDCT;
+    int width;
+    int height;
+    int inSubsamp;
+    int inColorspace;
+
+    if (tjDecompressHeader3(tjInstance, jpegBuf, jpegSize, &width, &height,
+                            &inSubsamp, &inColorspace) < 0) {
+        perror("reading JPEG header");
+        bailout(imgBuf, jpegBuf, tjInstance);
+        exit(EXIT_FAILURE);
+    }
+    // int width        = tj3Get(tjInstance, TJPARAM_JPEGWIDTH);
+    // int height       = tj3Get(tjInstance, TJPARAM_JPEGHEIGHT);
+    // int inSubsamp    = tj3Get(tjInstance, TJPARAM_SUBSAMP);
+    // int inColorspace = tj3Get(tjInstance, TJPARAM_COLORSPACE);
+
+    int pixelFormat = TJPF_BGR;
+    if ((unsigned long long)width * height * tjPixelSize[pixelFormat] >
+        (unsigned long long)((size_t)-1)) {
+        perror("allocating uncompressed image buffer, Image is too large");
+        bailout(imgBuf, jpegBuf, tjInstance);
+        exit(EXIT_FAILURE);
+    }
+    if ((imgBuf = (unsigned char *)malloc(sizeof(unsigned char) * width *
+                                          height * tjPixelSize[pixelFormat])) ==
+        NULL) {
+
+        perror("allocating uncompressed image buffer");
+        bailout(imgBuf, jpegBuf, tjInstance);
+        exit(EXIT_FAILURE);
+    }
+
+    if (tjDecompress2(tjInstance, jpegBuf, jpegSize, imgBuf, width, 0, height,
+                      pixelFormat, flags) < 0) {
+        perror("decompressing JPEG image");
+        bailout(imgBuf, jpegBuf, tjInstance);
+        exit(EXIT_FAILURE);
+    }
+    // Keep pointers to the images so it's possible to free memory properly on
+    // destruction.
+    rawImgBufers.push_back(imgBuf);
+
+    cv::Mat cvImg(height, width, CV_8UC3, imgBuf);
+
+    frames.push_back(cvImg);
+
+    /* ------------------------------ Cleaning ------------------------------ */
+    tjFree(jpegBuf);
+    tjDestroy(tjInstance);
+
+    jpegBuf    = NULL;
+    tjInstance = NULL;
+}
+
+void AqSysJPEGFiles::bailout(unsigned char *imgBuf, unsigned char *jpegBuf,
+                             tjhandle tjInstance) {
+    tjFree(imgBuf);
+    tjDestroy(tjInstance);
+    tjFree(jpegBuf);
+}

@@ -21,7 +21,8 @@ int main(int argc, char const *argv[]) {
     sort.setTracker(&ocv_kalman);
     sort.setIOUSolver(&auction);
     /* ------------------------------- Load images -------------------------- */
-    AqSysFiles files(motDataset);
+    // AqSysFiles files(motDataset);
+    AqSysJPEGFiles files(motDataset);
     glob_t globResult;
     std::string imgPathPattern = motDataset + "/img1_hd/*.jpg";
 

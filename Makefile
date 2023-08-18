@@ -39,7 +39,7 @@ endif
 
 ifndef DEBUG
 ifeq ($(HOST_ARCH), aarch64)
-OPT_FLAGS := -mcpu=cortex-a72.cortex-a53 -march=armv8-a+crc -fstack-protector-strong  -D_FORTIFY_SOURCE=2 -Wformat -Wformat-security -Werror=format-security -O2
+OPT_FLAGS := -mcpu=cortex-a72.cortex-a53 -march=armv8-a+crc -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wformat -Wformat-security -Werror=format-security -O2
 else
 OPT_FLAGS := -march=native -mtune=native
 endif
@@ -117,7 +117,7 @@ endif
 endif
 
 # Host app building, when compiler changes
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp Makefile
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(OBJS): |$(BUILD_DIR)
@@ -191,7 +191,7 @@ sort-app: app
 .PHONY: yolo-app
 yolo-app: CXXFLAGS += -DDPUYOLO
 yolo-app: MAIN_FILE := mainyolodpu.cpp
-yolo-app: LDFLAGS += -lvitis_ai_library-yolov3 -lvitis_ai_library-dpu_task -lvitis_ai_library-xnnpp -lvitis_ai_library-model_config -lvitis_ai_library-math -lvart-util -lxir -pthread -ljson-c -lglog
+yolo-app: LDFLAGS += -lvitis_ai_library-yolov3 -lvitis_ai_library-dpu_task -lvitis_ai_library-xnnpp -lvitis_ai_library-model_config -lvitis_ai_library-math -lvart-util -lxir -pthread -ljson-c -lglog -lturbojpeg 
 yolo-app: app
 
 .PHONY: accel

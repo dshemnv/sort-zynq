@@ -1,6 +1,7 @@
 #ifndef ACQSYS_H
 #define ACQSYS_H
 #include <opencv2/opencv.hpp>
+#include <turbojpeg.h>
 
 class AqSys {
   public:
@@ -12,7 +13,7 @@ class AqSys {
 };
 
 class AqSysFiles : public AqSys {
-  private:
+  protected:
     std::vector<cv::Mat> frames;
     int currentFrameIdx;
 
@@ -25,6 +26,19 @@ class AqSysFiles : public AqSys {
     const cv::Mat &getFrame();
     const cv::Mat &getCurrentFrame();
     int index();
+};
+
+class AqSysJPEGFiles : public AqSysFiles {
+  private:
+    std::vector<unsigned char *> rawImgBufers;
+
+  public:
+    AqSysJPEGFiles(const std::string &folder);
+    AqSysJPEGFiles();
+    ~AqSysJPEGFiles();
+    void addImgFile(const std::string &path);
+    void bailout(unsigned char *imgBuf, unsigned char *jpegBuf,
+                 tjhandle tjInstance);
 };
 
 #endif
