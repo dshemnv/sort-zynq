@@ -6,13 +6,12 @@
 
 int main(int argc, char const *argv[]) {
 
-    std::string motDataset = "/home/root/MOT15/test/Venice-1";
-    std::string yoloModel  = "yolov3_voc_tf";
-
-    // if (argc < 2) {
-    //     LOG_ERR("Please provide path to MOT dataset.");
-    //     exit(EXIT_FAILURE);
-    // }
+    if (argc < 3) {
+        LOG_ERR("Please provide path to MOT dataset and yolo model name");
+        exit(EXIT_FAILURE);
+    }
+    std::string motDataset = argv[1];
+    std::string yoloModel  = argv[2];
 
     // motDataset = argv[1];
     Sort sort(1, 3, 0.3);
@@ -21,8 +20,8 @@ int main(int argc, char const *argv[]) {
     sort.setTracker(&ocv_kalman);
     sort.setIOUSolver(&auction);
     /* ------------------------------- Load images -------------------------- */
-    // AqSysFiles files(motDataset);
-    AqSysJPEGFiles files(motDataset);
+    AqSysFiles files(motDataset);
+    // AqSysJPEGFiles files(motDataset);
     glob_t globResult;
     std::string imgPathPattern = motDataset + "/img1_hd/*.jpg";
 
@@ -44,6 +43,21 @@ int main(int argc, char const *argv[]) {
     /* ---------------------------------------------------------------------- */
     YOLODPU yolo(yoloModel, true);
     yolo.setAqsys(&files);
+    std::string adasLabels[3] = {"car", "person", "cycle"};
+    std::string vocLabels[20] = {
+        "aeroplane",   "bicycle", "bird",  "boat",      "bottle",
+        "bus",         "car",     "cat",   "chair",     "cow",
+        "diningtable", "dog",     "horse", "motorbike", "person",
+        "pottedplant", "sheep",   "sofa",  "train",     "tvmonitor"};
+
+    if (yoloModel == "yolov3_adas_pruned_0_9") {
+        yolo.setLabels(adasLabels);
+    } else if (yoloModel == "yolov3_voc_tf") {
+        yolo.setLabels(vocLabels);
+    } else {
+        LOG_ERR("Wrong model");
+        exit(EXIT_FAILURE);
+    }
 
     GUI gui(yolo, files, "test");
 

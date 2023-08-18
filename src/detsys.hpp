@@ -106,17 +106,15 @@ class YOLODPU : public DetSys {
     std::vector<Metadata> currentDetections;
     AqSys *aqsys;
     std::unique_ptr<vitis::ai::YOLOv3> yoloInstance;
-    std::string label[20] = {
-        "aeroplane",   "bicycle", "bird",  "boat",      "bottle",
-        "bus",         "car",     "cat",   "chair",     "cow",
-        "diningtable", "dog",     "horse", "motorbike", "person",
-        "pottedplant", "sheep",   "sofa",  "train",     "tvmonitor"};
+    std::string *label;
+    int nClasses;
 
   public:
     YOLODPU(const std::string &modelName, bool needPreprocess);
     YOLODPU(AqSys *aq);
     ~YOLODPU();
     void setYOLO(const std::string &modelName, bool needPreprocess);
+    void setLabels(std::string *labelsList);
     void setAqsys(AqSys *aqsys);
     void detect();
     std::vector<Metadata> yoloResultToMetadata(vitis::ai::YOLOv3Result &result);

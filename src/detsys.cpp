@@ -135,6 +135,7 @@ void YOLODPU::setYOLO(const std::string &modelName, bool needPreprocess) {
     yoloInstance = vitis::ai::YOLOv3::create(modelName, needPreprocess);
 }
 
+void YOLODPU::setLabels(std::string *labelsList) { label = labelsList; }
 void YOLODPU::setAqsys(AqSys *aqsys) { this->aqsys = aqsys; }
 
 void YOLODPU::detect() {

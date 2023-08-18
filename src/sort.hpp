@@ -26,7 +26,7 @@ class Tracklet {
     const cv::Scalar &getColor();
     void update(Metadata &detection);
 };
-
+// TODO: Verify quality of tracking
 class Sort {
   private:
     int maxAge;

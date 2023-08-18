@@ -39,7 +39,7 @@ endif
 
 ifndef DEBUG
 ifeq ($(HOST_ARCH), aarch64)
-OPT_FLAGS := -mcpu=cortex-a72.cortex-a53 -march=armv8-a+crc -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wformat -Wformat-security -Werror=format-security -O2
+OPT_FLAGS := -mcpu=cortex-a72.cortex-a53 -march=armv8-a+crc -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wformat -Wformat-security -Werror=format-security -Ofast
 else
 OPT_FLAGS := -march=native -mtune=native
 endif

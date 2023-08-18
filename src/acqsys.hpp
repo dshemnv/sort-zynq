@@ -12,6 +12,17 @@ class AqSys {
     virtual int index() = 0;
 };
 
+class AqSysCam : public AqSys {
+  protected:
+    int currentFrameIdx;
+    cv::Mat currentFrame;
+
+  public:
+    AqSysCam(int devId);
+    ~AqSysCam();
+    // TODO: Implement webcam, test perf.
+};
+
 class AqSysFiles : public AqSys {
   protected:
     std::vector<cv::Mat> frames;
