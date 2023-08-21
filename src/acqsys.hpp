@@ -1,9 +1,15 @@
 #ifndef ACQSYS_H
 #define ACQSYS_H
+#include "utils.hpp"
 #include <opencv2/opencv.hpp>
+#include <opencv2/videoio.hpp>
 #include <turbojpeg.h>
 
 class AqSys {
+  protected:
+    int currentFrameIdx;
+    cv::Mat currentFrame;
+
   public:
     virtual bool eof()                       = 0;
     virtual const cv::Mat &getFrame()        = 0;
@@ -13,20 +19,21 @@ class AqSys {
 };
 
 class AqSysCam : public AqSys {
-  protected:
-    int currentFrameIdx;
-    cv::Mat currentFrame;
+  private:
+    cv::VideoCapture stream;
 
   public:
     AqSysCam(int devId);
     ~AqSysCam();
-    // TODO: Implement webcam, test perf.
+    const cv::Mat &getFrame();
+    const cv::Mat &getCurrentFrame();
+    bool eof();
+    int index();
 };
 
 class AqSysFiles : public AqSys {
   protected:
     std::vector<cv::Mat> frames;
-    int currentFrameIdx;
 
   public:
     AqSysFiles(const std::string &folder);

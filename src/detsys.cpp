@@ -138,6 +138,8 @@ void YOLODPU::setYOLO(const std::string &modelName, bool needPreprocess) {
 void YOLODPU::setLabels(std::string *labelsList) { label = labelsList; }
 void YOLODPU::setAqsys(AqSys *aqsys) { this->aqsys = aqsys; }
 
+AqSys *YOLODPU::getAqsys() { return aqsys; }
+
 void YOLODPU::detect() {
     cv::Mat frame                   = aqsys->getCurrentFrame();
     vitis::ai::YOLOv3Result results = yoloInstance->run(frame);

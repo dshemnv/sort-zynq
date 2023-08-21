@@ -167,3 +167,29 @@ void AqSysJPEGFiles::bailout(unsigned char *imgBuf, unsigned char *jpegBuf,
     tjDestroy(tjInstance);
     tjFree(jpegBuf);
 }
+
+AqSysCam::AqSysCam(int devId) {
+    std::string gstreamedPipeline =
+        "v4l2src device=/dev/video0 ! image/jpeg, width=1280, height=720, "
+        "framerate=30/1 ! jpegdec ! videoconvert ! appsink";
+    stream = cv::VideoCapture(gstreamedPipeline, cv::CAP_GSTREAMER);
+    if (!stream.isOpened()) {
+        LOG_ERR("Unable to open camera " << devId);
+    }
+}
+
+AqSysCam::~AqSysCam() { stream.release(); }
+
+const cv::Mat &AqSysCam::getFrame() {
+    stream >> currentFrame;
+    currentFrameIdx++;
+    return currentFrame;
+}
+
+const cv::Mat &AqSysCam::getCurrentFrame() {
+    return currentFrame;
+    // TODO: insérer une instruction return ici
+}
+
+bool AqSysCam::eof() { return !stream.isOpened(); }
+int AqSysCam::index() { return currentFrameIdx; }

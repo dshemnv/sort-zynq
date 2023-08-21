@@ -7,7 +7,8 @@
 int main(int argc, char const *argv[]) {
 
     if (argc < 3) {
-        LOG_ERR("Please provide path to MOT dataset and yolo model name");
+        LOG_ERR("Please provide path to MOT dataset/webcam device id and yolo "
+                "model name");
         exit(EXIT_FAILURE);
     }
     std::string motDataset = argv[1];
@@ -19,30 +20,41 @@ int main(int argc, char const *argv[]) {
     AuctionNaive auction(0.001);
     sort.setTracker(&ocv_kalman);
     sort.setIOUSolver(&auction);
-    /* ------------------------------- Load images -------------------------- */
-    AqSysFiles files(motDataset);
-    // AqSysJPEGFiles files(motDataset);
-    glob_t globResult;
-    std::string imgPathPattern = motDataset + "/img1_hd/*.jpg";
-
-    // Find all dataset images
-    int returnVal = glob(imgPathPattern.c_str(), GLOB_ERR, NULL, &globResult);
-    if (returnVal != 0) {
-        globfree(&globResult);
-        LOG_ERR("No files found.");
-        exit(EXIT_FAILURE);
-    }
-
-    // Load dataset images in acqsys
-    for (int i = 0; i < globResult.gl_pathc; i++) {
-        // for (int i = 0; i < 2; i++) {
-        files.addImgFile(std::string(globResult.gl_pathv[i]));
-    }
-
-    globfree(&globResult);
-    /* ---------------------------------------------------------------------- */
     YOLODPU yolo(yoloModel, true);
-    yolo.setAqsys(&files);
+    AqSys *aq = NULL;
+    /* ------------------------------- Load images -------------------------- */
+    if (motDataset.length() > 2) {
+        AqSysFiles *mot = new AqSysFiles(motDataset);
+        // AqSysJPEGFiles files(motDataset);
+        glob_t globResult;
+        std::string imgPathPattern = motDataset + "/img1_hd/*.jpg";
+
+        // Find all dataset images
+        int returnVal =
+            glob(imgPathPattern.c_str(), GLOB_ERR, NULL, &globResult);
+        if (returnVal != 0) {
+            globfree(&globResult);
+            LOG_ERR("No files found.");
+            exit(EXIT_FAILURE);
+        }
+
+        // Load dataset images in acqsys
+        for (int i = 0; i < globResult.gl_pathc; i++) {
+            // for (int i = 0; i < 2; i++) {
+            mot->addImgFile(std::string(globResult.gl_pathv[i]));
+        }
+
+        globfree(&globResult);
+        aq = mot;
+    } else {
+        int devId     = atoi(motDataset.c_str());
+        AqSysCam *cam = new AqSysCam(devId);
+        aq            = cam;
+    }
+
+    yolo.setAqsys(aq);
+    GUI gui(yolo, *aq, "test");
+    /* ---------------------------------------------------------------------- */
     std::string adasLabels[3] = {"car", "person", "cycle"};
     std::string vocLabels[20] = {
         "aeroplane",   "bicycle", "bird",  "boat",      "bottle",
@@ -58,8 +70,6 @@ int main(int argc, char const *argv[]) {
         LOG_ERR("Wrong model");
         exit(EXIT_FAILURE);
     }
-
-    GUI gui(yolo, files, "test");
 
     // gui.toggleBb();
     auto realFPSstart = std::chrono::high_resolution_clock::now();
@@ -88,19 +98,24 @@ int main(int argc, char const *argv[]) {
             std::vector<Metadata> detections = yolo.getDetections();
             auto sortFPSstart = std::chrono::high_resolution_clock::now();
 
-            sort.update(detections);
-
-            std::chrono::duration<double, std::micro> sortFPSdiff =
-                (std::chrono::high_resolution_clock::now() - sortFPSstart);
-            double sortFPStime = sortFPSdiff.count();
-            int sortFPS        = static_cast<int>(1 / (sortFPStime * 1e-6));
+            if (detections.size() >= 3) {
+                sort.update(detections);
+                std::chrono::duration<double, std::micro> sortFPSdiff =
+                    (std::chrono::high_resolution_clock::now() - sortFPSstart);
+                double sortFPStime = sortFPSdiff.count();
+                int sortFPS        = static_cast<int>(1 / (sortFPStime * 1e-6));
+                gui.addFPS(sortFPS, "SORT FPS: ", cv::Point(0, 150));
+            }
 
             gui.addFPS(realFPS, "Overall FPS: ", cv::Point(0, 50));
             gui.addFPS(yoloFPS, "YOLO Inference FPS: ", cv::Point(0, 100));
-            gui.addFPS(sortFPS, "SORT FPS: ", cv::Point(0, 150));
 
-            std::vector<Metadata> correctedDetections =
-                sort.getCorrectedDetections();
+            std::vector<Metadata> correctedDetections;
+            if (detections.size() >= 3) {
+                correctedDetections = sort.getCorrectedDetections();
+            } else {
+                correctedDetections = detections;
+            }
             gui.drawFromDetections(correctedDetections);
             // gui.addFPS(fps);
         }
@@ -114,5 +129,6 @@ int main(int argc, char const *argv[]) {
     }
 
     cv::destroyAllWindows();
+    delete aq;
     return 0;
 }

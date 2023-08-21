@@ -116,6 +116,7 @@ class YOLODPU : public DetSys {
     void setYOLO(const std::string &modelName, bool needPreprocess);
     void setLabels(std::string *labelsList);
     void setAqsys(AqSys *aqsys);
+    AqSys *getAqsys();
     void detect();
     std::vector<Metadata> yoloResultToMetadata(vitis::ai::YOLOv3Result &result);
     std::vector<Metadata> getDetections();
