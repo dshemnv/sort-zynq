@@ -71,22 +71,24 @@ int main(int argc, char const *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    // gui.toggleBb();
     auto realFPSstart = std::chrono::high_resolution_clock::now();
+    auto realFPSstop  = std::chrono::high_resolution_clock::now();
     bool pause        = false;
     while (true) {
         if (!pause) {
             cv::Mat frame;
+
+            std::chrono::duration<double, std::micro> realFPSdiff =
+                (realFPSstop - realFPSstart);
+            double realFPStime = realFPSdiff.count();
+            int realFPS        = static_cast<int>(1 / (realFPStime * 1e-6));
+            realFPSstart       = std::chrono::high_resolution_clock::now();
+
             int result = gui.nextFrame(&frame);
             if (result == 1) {
                 std::cout << "No more frames to show" << std::endl;
                 break;
             }
-            std::chrono::duration<double, std::micro> realFPSdiff =
-                (std::chrono::high_resolution_clock::now() - realFPSstart);
-            double realFPStime = realFPSdiff.count();
-            int realFPS        = static_cast<int>(1 / (realFPStime * 1e-6));
-            realFPSstart       = std::chrono::high_resolution_clock::now();
 
             yolo.detect();
 
@@ -98,7 +100,7 @@ int main(int argc, char const *argv[]) {
             std::vector<Metadata> detections = yolo.getDetections();
             auto sortFPSstart = std::chrono::high_resolution_clock::now();
 
-            if (detections.size() >= 3) {
+            if (detections.size() >= 1) {
                 sort.update(detections);
                 std::chrono::duration<double, std::micro> sortFPSdiff =
                     (std::chrono::high_resolution_clock::now() - sortFPSstart);
@@ -111,13 +113,14 @@ int main(int argc, char const *argv[]) {
             gui.addFPS(yoloFPS, "YOLO Inference FPS: ", cv::Point(0, 100));
 
             std::vector<Metadata> correctedDetections;
-            if (detections.size() >= 3) {
+            if (detections.size() >= 1) {
                 correctedDetections = sort.getCorrectedDetections();
             } else {
                 correctedDetections = detections;
             }
             gui.drawFromDetections(correctedDetections);
             // gui.addFPS(fps);
+            realFPSstop = std::chrono::high_resolution_clock::now();
         }
         gui.show();
         char c = (char)cv::waitKey(1);
