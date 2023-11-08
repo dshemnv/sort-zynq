@@ -36,7 +36,7 @@ int main(int argc, char const *argv[]) {
             }
             auto start = std::chrono::high_resolution_clock::now();
 
-            sort.update(data.getDetections(sort.getFrameCnt()));
+            sort.update(data.getDetections());
 
             auto end = std::chrono::high_resolution_clock::now();
 

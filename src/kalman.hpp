@@ -1,6 +1,5 @@
 #ifndef KALMAN_HPP
 #define KALMAN_HPP
-#include "detection.hpp"
 #include "utils.hpp"
 #ifdef KALMAN_ACCEL
 #include "kalman_hls_accel.hpp"
@@ -44,12 +43,6 @@ struct kalmanConfig {
     }
 };
 
-struct kalmanParams {
-    int dynamParams;
-    int measureParams;
-    int controlParams;
-};
-
 #ifdef KALMAN_ACCEL
 struct kalmanBuf {
     enum destination { CV_MAT, DATA_PTR };
@@ -68,9 +61,6 @@ struct kalmanBuf {
 #endif
 
 class KalmanBase {
-  private:
-    kalmanParams params;
-
   public:
     virtual const cv::Mat &predict()                      = 0;
     virtual void update(const cv::Mat &meas)              = 0;
@@ -79,17 +69,13 @@ class KalmanBase {
     virtual kalmanConfig dump()                           = 0;
     virtual void setState(const cv::Mat &newState)        = 0;
     virtual const cv::Mat &getState()                     = 0;
-    kalmanParams getParams();
-    void setParams(kalmanParams params);
 };
 
-class KalmanOCV : public KalmanBase {
+template <size_t N_STATES, size_t N_MEAS> class KalmanOCV : public KalmanBase {
   private:
     cv::KalmanFilter kf;
 
   public:
-    KalmanOCV(kalmanParams params);
-    KalmanOCV(int dynamParams, int measureParams, int controlParams);
     KalmanOCV();
     ~KalmanOCV();
     const cv::Mat &predict();
@@ -100,6 +86,59 @@ class KalmanOCV : public KalmanBase {
     void setState(const cv::Mat &newState);
     kalmanConfig dump();
 };
+template <size_t N_STATES, size_t N_MEAS>
+KalmanOCV<N_STATES, N_MEAS>::KalmanOCV() {
+    kf = cv::KalmanFilter();
+    kf.init(N_STATES, N_MEAS, 0);
+}
+
+template <size_t N_STATES, size_t N_MEAS>
+KalmanOCV<N_STATES, N_MEAS>::~KalmanOCV() {}
+
+template <size_t N_STATES, size_t N_MEAS>
+void KalmanOCV<N_STATES, N_MEAS>::init(cv::Mat initialEstimateUncertainty) {
+    kf.errorCovPre = initialEstimateUncertainty;
+}
+
+template <size_t N_STATES, size_t N_MEAS>
+const cv::Mat &KalmanOCV<N_STATES, N_MEAS>::getState() {
+    return kf.statePost;
+}
+
+template <size_t N_STATES, size_t N_MEAS>
+void KalmanOCV<N_STATES, N_MEAS>::setState(const cv::Mat &new_state) {
+    kf.statePost = new_state;
+}
+
+template <size_t N_STATES, size_t N_MEAS>
+void KalmanOCV<N_STATES, N_MEAS>::load(kalmanConfig config) {
+    config.F.copyTo(kf.transitionMatrix);
+    config.Q.copyTo(kf.processNoiseCov);
+    config.R.copyTo(kf.measurementNoiseCov);
+    config.H.copyTo(kf.measurementMatrix);
+    config.P.copyTo(kf.errorCovPost);
+}
+
+template <size_t N_STATES, size_t N_MEAS>
+kalmanConfig KalmanOCV<N_STATES, N_MEAS>::dump() {
+    kalmanConfig config;
+    kf.transitionMatrix.copyTo(config.F);
+    kf.processNoiseCov.copyTo(config.Q);
+    kf.measurementNoiseCov.copyTo(config.R);
+    kf.measurementMatrix.copyTo(config.H);
+    return config;
+}
+
+template <size_t N_STATES, size_t N_MEAS>
+const cv::Mat &KalmanOCV<N_STATES, N_MEAS>::predict() {
+    // std::cout << "Made a prediction" << std::endl;
+    return kf.predict();
+}
+
+template <size_t N_STATES, size_t N_MEAS>
+void KalmanOCV<N_STATES, N_MEAS>::update(const cv::Mat &meas) {
+    kf.correct(meas);
+}
 
 template <size_t N_STATES, size_t N_MEAS>
 class KalmanEigen : public KalmanBase {
@@ -114,9 +153,8 @@ class KalmanEigen : public KalmanBase {
 
   public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    KalmanEigen(kalmanParams params){};
-    KalmanEigen(){};
-    ~KalmanEigen(){};
+    KalmanEigen();
+    ~KalmanEigen();
     Eigen::Matrix<double, N_STATES, N_MEAS> K();
     const cv::Mat &predict();
     void update(const cv::Mat &meas);
@@ -126,6 +164,12 @@ class KalmanEigen : public KalmanBase {
     void setState(const cv::Mat &newState);
     kalmanConfig dump();
 };
+
+template <size_t N_STATES, size_t N_MEAS>
+KalmanEigen<N_STATES, N_MEAS>::KalmanEigen() {}
+
+template <size_t N_STATES, size_t N_MEAS>
+KalmanEigen<N_STATES, N_MEAS>::~KalmanEigen() {}
 
 template <size_t N_STATES, size_t N_MEAS>
 Eigen::Matrix<double, N_STATES, N_MEAS> KalmanEigen<N_STATES, N_MEAS>::K() {
@@ -198,15 +242,14 @@ kalmanConfig KalmanEigen<N_STATES, N_MEAS>::dump() {
 class KalmanCreator {
   public:
     virtual ~KalmanCreator(){};
-    virtual KalmanBase *create(int dynamParams, int measureParams,
-                               int controlParams = 0) const = 0;
+    virtual KalmanBase *create() const = 0;
 };
 
+template <size_t N_STATES, size_t N_MEAS>
 class KalmanOCVCreator : public KalmanCreator {
   public:
-    KalmanBase *create(int dynamParams, int measureParams,
-                       int controlParams = 0) const override {
-        return new KalmanOCV(dynamParams, measureParams, controlParams);
+    KalmanBase *create() const override {
+        return new KalmanOCV<N_STATES, N_MEAS>();
     };
     ~KalmanOCVCreator(){};
 };
@@ -214,16 +257,11 @@ class KalmanOCVCreator : public KalmanCreator {
 template <size_t N_STATES, size_t N_MEAS>
 class KalmanEigenCreator : public KalmanCreator {
   public:
-    KalmanBase *create(int dynamStates, int measureStates) const override;
+    KalmanBase *create() const override {
+        return new KalmanEigen<N_STATES, N_MEAS>();
+    };
     ~KalmanEigenCreator(){};
 };
-
-template <size_t N_STATES, size_t N_MEAS>
-inline KalmanBase *
-KalmanEigenCreator<N_STATES, N_MEAS>::create(int dynamStates,
-                                             int measureStates) const {
-    return new KalmanEigen<N_STATES, N_MEAS>();
-}
 
 #ifdef KALMAN_ACCEL
 class KalmanHLS : public KalmanBase {
@@ -268,13 +306,4 @@ class KalmanHLS : public KalmanBase {
     kalmanConfig dump();
 };
 #endif
-
-class MatManager {
-  private:
-    /* data */
-  public:
-    MatManager(/* args */);
-    ~MatManager();
-};
-
 #endif

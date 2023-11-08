@@ -17,6 +17,7 @@ class GUI {
     GUI();
     GUI(AqSys &aqsys, const std::string &windowName);
     GUI(DetSys &detsys, AqSys &aqsys, const std::string &windowName);
+    GUI(DetSys &detsys, const std::string &windowName);
     ~GUI();
     void toggleBb();
     void drawBb(const cv::Rect &bb, const std::string &label,

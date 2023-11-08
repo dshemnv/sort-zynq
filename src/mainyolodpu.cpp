@@ -16,7 +16,7 @@ int main(int argc, char const *argv[]) {
 
     // motDataset = argv[1];
     Sort sort(1, 3, 0.3);
-    KalmanOCVCreator ocv_kalman;
+    KalmanOCVCreator<KF_N, KF_M> ocv_kalman;
     AuctionNaive auction(0.001);
     sort.setTracker(&ocv_kalman);
     sort.setIOUSolver(&auction);

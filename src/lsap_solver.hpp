@@ -8,6 +8,7 @@ class SolverBase {
     std::string name;
 
   public:
+    virtual ~SolverBase(){};
     virtual void solve(const cv::Mat &costMat, cv::Mat &result,
                        cv::Mat &indexes) = 0;
 };

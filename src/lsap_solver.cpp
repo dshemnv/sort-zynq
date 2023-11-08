@@ -12,7 +12,7 @@ void AuctionNaive::solve(const cv::Mat &costMat, cv::Mat &result,
     nAgents  = costMat.rows;
     nObjects = costMat.cols;
 
-    array<double> costMatA;
+    auction_array<double> costMatA;
     costMatA.cols = costMat.cols;
     costMatA.rows = costMat.rows;
     costMatA.data = new double[costMatA.rows * costMatA.cols];
@@ -39,7 +39,7 @@ void AuctionNaive::solve(const cv::Mat &costMat, cv::Mat &result,
         for (int i = 0; i < res.size; i++) {
             res.result[i] = assig;
         }
-        array<double> tcostMatA;
+        auction_array<double> tcostMatA;
         init<double>(&tcostMatA, nObjects, nAgents, 0);
         transpose<double>(&costMatA, &tcostMatA);
         solve_jacobi<double>(&tcostMatA, eps, &res, matType, &nIter);
@@ -54,8 +54,8 @@ void AuctionNaive::solve(const cv::Mat &costMat, cv::Mat &result,
         solve_jacobi<double>(&costMatA, eps, &res, matType, &nIter);
     }
 
-    array<int> agent2object;
-    array<int> indexes_res;
+    auction_array<int> agent2object;
+    auction_array<int> indexes_res;
 
     init<int>(&agent2object, 1, res.n_assignment, -1);
     init<int>(&indexes_res, 1, res.n_assignment, -1);

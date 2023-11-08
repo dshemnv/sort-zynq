@@ -1,7 +1,6 @@
 #ifndef DETSYS_H
 #define DETSYS_H
 #include "acqsys.hpp"
-#include "detection.hpp"
 #include <glob.h>
 #include <opencv2/opencv.hpp>
 #ifdef DPUYOLO

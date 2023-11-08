@@ -135,7 +135,7 @@ void Sort::update(std::vector<Metadata> detections) {
 
     // Step 4: Initiate tracklets for unmatched detections
     for (int idx = 0; idx < unmatchedDetections.size(); idx++) {
-        KalmanBase *newTracker = trackCreator->create(KF_N, KF_M);
+        KalmanBase *newTracker = trackCreator->create();
         newTracker->load(config);
         cv::Mat state = detToSort(unmatchedDetections[idx]);
         newTracker->setState(state);

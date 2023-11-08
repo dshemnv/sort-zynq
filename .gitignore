@@ -11,3 +11,6 @@ tmp
 *.log
 _x
 *.o
+sysroot
+run_log
+test

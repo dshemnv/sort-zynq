@@ -6,55 +6,6 @@
 #include "utils.hpp"
 #include <cassert>
 
-kalmanParams KalmanBase::getParams() { return params; }
-void KalmanBase::setParams(kalmanParams params) { this->params = params; }
-// TODO: Change this class to be templated instead of using kalmanParams
-KalmanOCV::KalmanOCV(kalmanParams params) {
-    kf = cv::KalmanFilter();
-    kf.init(params.dynamParams, params.measureParams, params.controlParams);
-    setParams(params);
-}
-
-KalmanOCV::KalmanOCV(int dynamParams, int measureParams, int controlParams) {
-    kf = cv::KalmanFilter(dynamParams, measureParams, controlParams);
-}
-
-KalmanOCV::KalmanOCV() {}
-
-KalmanOCV::~KalmanOCV() {}
-
-void KalmanOCV::init(cv::Mat initialEstimateUncertainty) {
-    kf.errorCovPre = initialEstimateUncertainty;
-}
-
-const cv::Mat &KalmanOCV::getState() { return kf.statePost; }
-
-void KalmanOCV::setState(const cv::Mat &new_state) { kf.statePost = new_state; }
-
-void KalmanOCV::load(kalmanConfig config) {
-    config.F.copyTo(kf.transitionMatrix);
-    config.Q.copyTo(kf.processNoiseCov);
-    config.R.copyTo(kf.measurementNoiseCov);
-    config.H.copyTo(kf.measurementMatrix);
-    config.P.copyTo(kf.errorCovPost);
-}
-
-kalmanConfig KalmanOCV::dump() {
-    kalmanConfig config;
-    kf.transitionMatrix.copyTo(config.F);
-    kf.processNoiseCov.copyTo(config.Q);
-    kf.measurementNoiseCov.copyTo(config.R);
-    kf.measurementMatrix.copyTo(config.H);
-    return config;
-}
-
-const cv::Mat &KalmanOCV::predict() {
-    // std::cout << "Made a prediction" << std::endl;
-    return kf.predict();
-}
-
-void KalmanOCV::update(const cv::Mat &meas) { kf.correct(meas); }
-
 #ifdef KALMAN_ACCEL
 KalmanHLS::KalmanHLS() {}
 KalmanHLS::KalmanHLS(kalmanParams params) { setParams(params); }
@@ -416,5 +367,3 @@ kalmanConfig KalmanHLS::dump() {
     fs.release();
 }
 #endif
-MatManager::MatManager(/* args */) {}
-MatManager::~MatManager() {}
