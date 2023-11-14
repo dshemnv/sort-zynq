@@ -32,7 +32,7 @@ endif
 # ------------------------- Setting correct compiler ------------------------- #
 
 ifeq ($(HOST_ARCH), aarch64)
-CXX := $(XILINX_VITIS)/gnu/aarch64/lin/aarch64-linux/bin/aarch64-linux-gnu-g++
+CXX := sysroot/sysroots/x86_64-petalinux-linux/usr/bin/aarch64-xilinx-linux/aarch64-xilinx-linux-g++
 else ifeq ($(HOST_ARCH), x86)
 CXX := g++
 endif
@@ -59,7 +59,9 @@ TEMP_LOG_DIR := $(TEMP_DIR)/logs
 
 IDIRS := src
 IDIRS += extern/eigen
-IDIRS += /home/dshem/Documents/these/ressources/papers/rapido2023/experiments/auction_c/include
+# IDIRS += /home/dshem/Documents/these/ressources/papers/rapido2023/experiments/auction_c/include
+IDIRS += extern/auction/include
+IDIRS += sysroot/sysroots/cortexa72-cortexa53-xilinx-linux/usr/include
 XF_VIDEO_IDIR := $(VITIS_VISION_LIB_DIR)/L1/include/video
 
 ifeq ($(HOST_ARCH), aarch64)

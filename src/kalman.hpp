@@ -166,7 +166,15 @@ class KalmanEigen : public KalmanBase {
 };
 
 template <size_t N_STATES, size_t N_MEAS>
-KalmanEigen<N_STATES, N_MEAS>::KalmanEigen() {}
+KalmanEigen<N_STATES, N_MEAS>::KalmanEigen() {
+    X = Eigen::Vector<double, N_STATES>::Zero();
+    F = Eigen::Matrix<double, N_STATES, N_STATES>::Identity();
+    H = Eigen::Matrix<double, N_MEAS, N_STATES>::Zero();
+    Q = Eigen::Matrix<double, N_STATES, N_STATES>::Identity();
+    R = Eigen::Matrix<double, N_MEAS, N_MEAS>::Identity();
+    P = Eigen::Matrix<double, N_STATES, N_STATES>::Zero();
+    // std::cout << "Initialized Kalman Tracker" << std::endl;
+}
 
 template <size_t N_STATES, size_t N_MEAS>
 KalmanEigen<N_STATES, N_MEAS>::~KalmanEigen() {}
@@ -180,9 +188,8 @@ Eigen::Matrix<double, N_STATES, N_MEAS> KalmanEigen<N_STATES, N_MEAS>::K() {
 
 template <size_t N_STATES, size_t N_MEAS>
 const cv::Mat &KalmanEigen<N_STATES, N_MEAS>::getState() {
-    cv::Mat state;
-    cv::eigen2cv<double>(X, state);
-    return state;
+    cv::eigen2cv<double>(X, output);
+    return output;
 }
 
 template <size_t N_STATES, size_t N_MEAS>
@@ -210,7 +217,7 @@ void KalmanEigen<N_STATES, N_MEAS>::update(const cv::Mat &meas) {
 
     Eigen::Matrix<double, N_STATES, N_STATES> U = diag - gain * H;
 
-    X = X + gain * (meas - H * X);
+    X = X + gain * (measure - H * X);
     P = U * P * U.transpose() + gain * R * gain.transpose();
 }
 
@@ -224,7 +231,7 @@ void KalmanEigen<N_STATES, N_MEAS>::load(kalmanConfig config) {
 
 template <size_t N_STATES, size_t N_MEAS>
 void KalmanEigen<N_STATES, N_MEAS>::init(cv::Mat initialEstimateUncertainty) {
-    X = Eigen::VectorXf::Zero(N_STATES);
+    X = Eigen::VectorXd::Zero(N_STATES);
     cv::cv2eigen<double>(initialEstimateUncertainty, P);
 }
 
@@ -241,27 +248,33 @@ kalmanConfig KalmanEigen<N_STATES, N_MEAS>::dump() {
 
 class KalmanCreator {
   public:
+    virtual KalmanBase *create() = 0;
     virtual ~KalmanCreator(){};
-    virtual KalmanBase *create() const = 0;
 };
 
-template <size_t N_STATES, size_t N_MEAS>
-class KalmanOCVCreator : public KalmanCreator {
+template <typename KALMAN_TYPE>
+class KalmanCreatorFactory : public KalmanCreator {
   public:
-    KalmanBase *create() const override {
-        return new KalmanOCV<N_STATES, N_MEAS>();
-    };
-    ~KalmanOCVCreator(){};
+    KalmanBase *create() override { return new KALMAN_TYPE(); }
 };
 
-template <size_t N_STATES, size_t N_MEAS>
-class KalmanEigenCreator : public KalmanCreator {
-  public:
-    KalmanBase *create() const override {
-        return new KalmanEigen<N_STATES, N_MEAS>();
-    };
-    ~KalmanEigenCreator(){};
-};
+// template <size_t N_STATES, size_t N_MEAS>
+// class KalmanOCVCreator : public KalmanCreator {
+//   public:
+//     KalmanBase *create() const override {
+//         return new KalmanOCV<N_STATES, N_MEAS>();
+//     };
+//     ~KalmanOCVCreator(){};
+// };
+
+// template <size_t N_STATES, size_t N_MEAS>
+// class KalmanEigenCreator : public KalmanCreator {
+//   public:
+//     KalmanBase *create() const override {
+//         return new KalmanEigen<N_STATES, N_MEAS>();
+//     };
+//     ~KalmanEigenCreator(){};
+// };
 
 #ifdef KALMAN_ACCEL
 class KalmanHLS : public KalmanBase {

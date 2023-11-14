@@ -16,9 +16,12 @@ int main(int argc, char const *argv[]) {
 
     // motDataset = argv[1];
     Sort sort(1, 3, 0.3);
-    KalmanOCVCreator<KF_N, KF_M> ocv_kalman;
+    // KalmanOCVCreator<KF_N, KF_M> ocv_kalman;
+    // KalmanEigenCreator<KF_N, KF_M> kalman;
+    KalmanCreatorFactory<KalmanEigen<KF_N, KF_M>> kalmanFactory;
+    // KalmanCreatorFactory<KalmanOCV<KF_N, KF_M>> kalmanFactory;
     AuctionNaive auction(0.001);
-    sort.setTracker(&ocv_kalman);
+    sort.setTracker(&kalmanFactory);
     sort.setIOUSolver(&auction);
     YOLODPU yolo(yoloModel, true);
     AqSys *aq = NULL;
@@ -41,9 +44,12 @@ int main(int argc, char const *argv[]) {
         // Load dataset images in acqsys
         for (int i = 0; i < globResult.gl_pathc; i++) {
             // for (int i = 0; i < 2; i++) {
+            std::cout << "\r"
+                      << "[INFO] Loading image " << i << " / "
+                      << globResult.gl_pathc;
             mot->addImgFile(std::string(globResult.gl_pathv[i]));
         }
-
+        std::cout << std::endl;
         globfree(&globResult);
         aq = mot;
     } else {
@@ -51,7 +57,6 @@ int main(int argc, char const *argv[]) {
         AqSysCam *cam = new AqSysCam(devId);
         aq            = cam;
     }
-
     yolo.setAqsys(aq);
     GUI gui(yolo, *aq, "test");
     /* ---------------------------------------------------------------------- */
