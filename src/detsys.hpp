@@ -4,6 +4,7 @@
 #include <glob.h>
 #include <opencv2/opencv.hpp>
 #ifdef DPUYOLO
+// #include <vitis/ai/demo.hpp>
 #include <vitis/ai/yolov3.hpp>
 #endif
 
@@ -62,6 +63,7 @@ class DetSys {
     virtual void stop()  = 0;
     virtual ~DetSys(){};
     virtual std::vector<cv::Rect> getBb() = 0;
+    virtual void setAqsys(AqSys *aqsys)   = 0;
 };
 
 class MOTData : public DetSys {
@@ -117,8 +119,9 @@ class YOLODPU : public DetSys {
     void setAqsys(AqSys *aqsys);
     AqSys *getAqsys();
     void detect();
+    void detect_mt(int n_threads);
     std::vector<Metadata> yoloResultToMetadata(vitis::ai::YOLOv3Result &result);
-    std::vector<Metadata> getDetections();
+    std::vector<Metadata> &getDetections();
     std::vector<cv::Rect> getBb();
     void start();
     void stop();

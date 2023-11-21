@@ -146,6 +146,10 @@ void YOLODPU::detect() {
     currentDetections               = yoloResultToMetadata(results);
 }
 
+void YOLODPU::detect_mt(int n_threads) {
+    // Multi-threaded object detection
+}
+
 std::vector<Metadata>
 YOLODPU::yoloResultToMetadata(vitis::ai::YOLOv3Result &result) {
     std::vector<Metadata> output;
@@ -167,7 +171,7 @@ YOLODPU::yoloResultToMetadata(vitis::ai::YOLOv3Result &result) {
     return output;
 }
 
-std::vector<Metadata> YOLODPU::getDetections() { return currentDetections; }
+std::vector<Metadata> &YOLODPU::getDetections() { return currentDetections; }
 
 std::vector<cv::Rect> YOLODPU::getBb() {
     detect();

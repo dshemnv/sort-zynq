@@ -1,4 +1,5 @@
 #include "sort.hpp"
+#include <cstdio>
 
 Sort::Sort(int maxAge, int minHits, double iouThreshold)
     : maxAge(maxAge), minHits(minHits), iouThreshold(iouThreshold),
@@ -98,7 +99,7 @@ cv::Mat Sort::iou(const cv::Mat &bb1, const cv::Mat &bb2) {
 void Sort::setIOUSolver(SolverBase *solver) { lsapSolver = solver; }
 void Sort::setTracker(KalmanCreator *tracker) { trackCreator = tracker; }
 
-void Sort::update(std::vector<Metadata> detections) {
+void Sort::update(std::vector<Metadata> &detections) {
     frameCounter += 1;
     assert(lsapSolver != nullptr);
     assert(trackCreator != nullptr);
@@ -331,6 +332,13 @@ void Sort::associateDetToTrack(std::vector<Metadata> &detections,
     }
 }
 
+// Clean-up
+void Sort::clean() {
+    frameCounter = 0;
+    trackingResult.clear();
+    tracklets.clear();
+}
+
 // FIXME: This will not work with multithreading
 int Tracklet::idCounter = 0;
 
@@ -381,7 +389,7 @@ const cv::Mat &Tracklet::getState() { return tracker->getState(); }
 // Returns latest detection added to tracklet
 Metadata Tracklet::getLatestDetection() { return addedHistory.back(); }
 
-void Tracklet::update(Metadata &detection) {
+void Tracklet::update(Metadata detection) {
     timeSinceUpdate = 0;
     hitStreak += 1;
     std::queue<Metadata> empty;

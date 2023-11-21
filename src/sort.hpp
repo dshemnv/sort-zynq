@@ -24,7 +24,7 @@ class Tracklet {
     const cv::Mat &getState();
     Metadata getLatestDetection();
     const cv::Scalar &getColor();
-    void update(Metadata &detection);
+    void update(Metadata detection);
 };
 // TODO: Verify quality of tracking
 class Sort {
@@ -50,7 +50,7 @@ class Sort {
     cv::Mat iou(const cv::Mat &bb1, const cv::Mat &bb2);
     void setTracker(KalmanCreator *tracker);
     void setIOUSolver(SolverBase *solver);
-    void update(std::vector<Metadata> detections);
+    void update(std::vector<Metadata> &detections);
     bool isDead(Tracklet &track);
     void saveResults();
     void writeTrackingResults(const std::string &filename);
@@ -61,6 +61,7 @@ class Sort {
                              std::vector<int> &unmatchedTrackers,
                              std::vector<Metadata> &unmatchedDetections,
                              std::vector<std::vector<int>> &matched);
+    void clean();
 };
 
 cv::Mat detToSort(Metadata &detection);
