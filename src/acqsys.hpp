@@ -34,6 +34,7 @@ class AqSysCam : public AqSys {
 class AqSysFiles : public AqSys {
   protected:
     std::vector<cv::Mat> frames;
+    std::string name;
 
   public:
     AqSysFiles(const std::string &folder);
@@ -43,7 +44,9 @@ class AqSysFiles : public AqSys {
     bool eof();
     const cv::Mat &getFrame();
     const cv::Mat &getCurrentFrame();
+    const std::string &getName();
     int index();
+    int size();
 };
 
 class AqSysJPEGFiles : public AqSysFiles {
@@ -57,6 +60,16 @@ class AqSysJPEGFiles : public AqSysFiles {
     void addImgFile(const std::string &path);
     void bailout(unsigned char *imgBuf, unsigned char *jpegBuf,
                  tjhandle tjInstance);
+};
+
+class AqSysMOT : public AqSysFiles {
+  private:
+    std::string path;
+
+  public:
+    AqSysMOT(const std::string &folder);
+    ~AqSysMOT();
+    void load();
 };
 
 #endif
