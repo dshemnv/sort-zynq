@@ -196,6 +196,12 @@ yolo-app: MAIN_FILE := mainyolodpu.cpp
 yolo-app: LDFLAGS += -lvitis_ai_library-yolov3 -lvitis_ai_library-dpu_task -lvitis_ai_library-xnnpp -lvitis_ai_library-model_config -lvitis_ai_library-math -lvart-util -lxir -pthread -ljson-c -lglog -lturbojpeg 
 yolo-app: app
 
+.PHONY: benchmark
+benchmark: CXXFLAGS += -DDPUYOLO
+benchmark: MAIN_FILE := mainbenchmark.cpp
+benchmark: LDFLAGS += -lvitis_ai_library-yolov3 -lvitis_ai_library-dpu_task -lvitis_ai_library-xnnpp -lvitis_ai_library-model_config -lvitis_ai_library-math -lvart-util -lxir -pthread -ljson-c -lglog -lturbojpeg -lboost_filesystem
+benchmark: app
+
 .PHONY: accel
 accel: $(XCLBIN_FILES)
 
