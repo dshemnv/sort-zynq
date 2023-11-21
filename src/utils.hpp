@@ -63,4 +63,7 @@ template <class T> bool findValueInMat(const cv::Mat &mat, T value) {
     }
     return false;
 }
+
+void printProgress(int currentStep, int totalSteps);
+
 #endif

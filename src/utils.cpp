@@ -55,3 +55,23 @@ bool hasNan(const cv::Mat &mat) {
     }
     return false;
 }
+
+void printProgress(int currentStep, int totalSteps) {
+    float progress = (float)currentStep / (float)totalSteps;
+    int barWidth   = 70;
+
+    int pos = barWidth * progress;
+
+    std::cout << "[";
+    for (int i = 0; i < barWidth; i++) {
+        if (i < pos) {
+            std::cout << "=";
+        } else if (i == pos) {
+            std::cout << ">";
+        } else {
+            std::cout << " ";
+        }
+    }
+    std::cout << "]" << int(progress * 100.0) << "%\r";
+    std::cout.flush();
+}
