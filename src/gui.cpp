@@ -51,7 +51,8 @@ void GUI::drawFromDetections(std::vector<Metadata> &dets) {
 
 int GUI::nextFrame(cv::Mat *frame) {
     if (!aqsys->eof()) {
-        currentFrame = aqsys->getFrame();
+        aqsys->getFrame();
+        currentFrame = aqsys->getCurrentFrame();
         if (showBb) {
             // LOG_INFO("MOT BBS");
             std::vector<cv::Rect> bb = detsys->getBb();

@@ -12,7 +12,7 @@ class AqSys {
 
   public:
     virtual bool eof()                       = 0;
-    virtual const cv::Mat &getFrame()        = 0;
+    virtual void getFrame()                  = 0;
     virtual const cv::Mat &getCurrentFrame() = 0;
     virtual ~AqSys(){};
     virtual int index() = 0;
@@ -25,7 +25,7 @@ class AqSysCam : public AqSys {
   public:
     AqSysCam(int devId);
     ~AqSysCam();
-    const cv::Mat &getFrame();
+    void getFrame();
     const cv::Mat &getCurrentFrame();
     bool eof();
     int index();
@@ -33,8 +33,9 @@ class AqSysCam : public AqSys {
 
 class AqSysFiles : public AqSys {
   protected:
-    std::vector<cv::Mat> frames;
+    std::vector<std::string> imgPaths;
     std::string name;
+    cv::Mat currentFrame;
 
   public:
     AqSysFiles(const std::string &folder);
@@ -42,25 +43,25 @@ class AqSysFiles : public AqSys {
     ~AqSysFiles();
     void addImgFile(const std::string &path);
     bool eof();
-    const cv::Mat &getFrame();
+    void getFrame();
     const cv::Mat &getCurrentFrame();
     const std::string &getName();
     int index();
     int size();
 };
 
-class AqSysJPEGFiles : public AqSysFiles {
-  private:
-    std::vector<unsigned char *> rawImgBufers;
+// class AqSysJPEGFiles : public AqSysFiles {
+//   private:
+//     std::vector<unsigned char *> rawImgBufers;
 
-  public:
-    AqSysJPEGFiles(const std::string &folder);
-    AqSysJPEGFiles();
-    ~AqSysJPEGFiles();
-    void addImgFile(const std::string &path);
-    void bailout(unsigned char *imgBuf, unsigned char *jpegBuf,
-                 tjhandle tjInstance);
-};
+//   public:
+//     AqSysJPEGFiles(const std::string &folder);
+//     AqSysJPEGFiles();
+//     ~AqSysJPEGFiles();
+//     void addImgFile(const std::string &path);
+//     void bailout(unsigned char *imgBuf, unsigned char *jpegBuf,
+//                  tjhandle tjInstance);
+// };
 
 class AqSysMOT : public AqSysFiles {
   private:
