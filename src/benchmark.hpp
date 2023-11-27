@@ -1,3 +1,5 @@
+#ifndef _BENCHMARK_HPP
+#define _BENCHMARK_HPP
 #include "acqsys.hpp"
 #include "detsys.hpp"
 #include "lsap_solver.hpp"
@@ -31,3 +33,4 @@ class MOTBenchmark {
     void save();
 };
 } // namespace sortzynq
+#endif

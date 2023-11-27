@@ -199,7 +199,7 @@ yolo-app: app
 .PHONY: benchmark
 benchmark: CXXFLAGS += -DDPUYOLO
 benchmark: MAIN_FILE := mainbenchmark.cpp
-benchmark: LDFLAGS += -lvitis_ai_library-yolov3 -lvitis_ai_library-dpu_task -lvitis_ai_library-xnnpp -lvitis_ai_library-model_config -lvitis_ai_library-math -lvart-util -lxir -pthread -ljson-c -lglog -lturbojpeg -lboost_filesystem
+benchmark: LDFLAGS += -lvitis_ai_library-yolov3 -lvitis_ai_library-dpu_task -lvitis_ai_library-xnnpp -lvitis_ai_library-model_config -lvitis_ai_library-math -lvart-util -lxir -pthread -ljson-c -lglog -lturbojpeg -lboost_filesystem -lboost_program_options
 benchmark: app
 
 .PHONY: accel

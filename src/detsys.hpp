@@ -8,6 +8,10 @@
 #include <vitis/ai/yolov3.hpp>
 #endif
 
+extern std::string vocLabels[20];
+extern std::string cocoLabels[80];
+extern std::string adasLabels[3];
+
 // Simple data structure that holds detection metadata
 struct Metadata {
     double height;
