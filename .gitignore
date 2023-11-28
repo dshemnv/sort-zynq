@@ -14,3 +14,6 @@ _x
 sysroot
 run_log
 test
+.venv
+bench_results
+mot_data

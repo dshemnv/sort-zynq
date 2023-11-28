@@ -15,7 +15,7 @@ HLS ?= off
 # HOST_ARCH := x86
 # endif
 
-APP_NAME := kalman
+# APP_NAME := kalman
 BUILD_DIR := build/$(HOST_ARCH)/$(TARGET)
 
 SRC_DIR := src
@@ -190,15 +190,17 @@ app: $(BUILD_DIR)/$(APP_NAME)
 sort-app: MAIN_FILE := mainsort.cpp
 sort-app: app
 
+# TODO: Manage source files more properly depending on the target
 .PHONY: yolo-app
 yolo-app: CXXFLAGS += -DDPUYOLO
 yolo-app: MAIN_FILE := mainyolodpu.cpp
-yolo-app: LDFLAGS += -lvitis_ai_library-yolov3 -lvitis_ai_library-dpu_task -lvitis_ai_library-xnnpp -lvitis_ai_library-model_config -lvitis_ai_library-math -lvart-util -lxir -pthread -ljson-c -lglog -lturbojpeg 
+yolo-app: LDFLAGS += -lvitis_ai_library-yolov3 -lvitis_ai_library-dpu_task -lvitis_ai_library-xnnpp -lvitis_ai_library-model_config -lvitis_ai_library-math -lvart-util -lxir -pthread -ljson-c -lglog -lturbojpeg -lboost_filesystem
 yolo-app: app
 
 .PHONY: benchmark
 benchmark: CXXFLAGS += -DDPUYOLO
 benchmark: MAIN_FILE := mainbenchmark.cpp
+benchmark: APP_NAME := sortbench
 benchmark: LDFLAGS += -lvitis_ai_library-yolov3 -lvitis_ai_library-dpu_task -lvitis_ai_library-xnnpp -lvitis_ai_library-model_config -lvitis_ai_library-math -lvart-util -lxir -pthread -ljson-c -lglog -lturbojpeg -lboost_filesystem -lboost_program_options
 benchmark: app
 
