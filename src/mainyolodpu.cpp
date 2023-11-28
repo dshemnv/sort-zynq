@@ -30,7 +30,7 @@ int main(int argc, char const *argv[]) {
         AqSysFiles *mot = new AqSysFiles(motDataset);
         // AqSysJPEGFiles files(motDataset);
         glob_t globResult;
-        std::string imgPathPattern = motDataset + "/img1_hd/*.jpg";
+        std::string imgPathPattern = motDataset + "/img1/*.jpg";
 
         // Find all dataset images
         int returnVal =
@@ -60,12 +60,6 @@ int main(int argc, char const *argv[]) {
     yolo.setAqsys(aq);
     GUI gui(yolo, *aq, "test");
     /* ---------------------------------------------------------------------- */
-    std::string adasLabels[3] = {"car", "person", "cycle"};
-    std::string vocLabels[20] = {
-        "aeroplane",   "bicycle", "bird",  "boat",      "bottle",
-        "bus",         "car",     "cat",   "chair",     "cow",
-        "diningtable", "dog",     "horse", "motorbike", "person",
-        "pottedplant", "sheep",   "sofa",  "train",     "tvmonitor"};
 
     if (yoloModel == "yolov3_adas_pruned_0_9") {
         yolo.setLabels(adasLabels);
@@ -102,7 +96,7 @@ int main(int argc, char const *argv[]) {
             double yoloFPStime = yoloFPSdiff.count();
             int yoloFPS        = static_cast<int>(1 / (yoloFPStime * 1e-6));
 
-            std::vector<Metadata> detections = yolo.getDetections();
+            std::vector<Metadata> detections = yolo.getDetections("person");
             auto sortFPSstart = std::chrono::high_resolution_clock::now();
 
             if (detections.size() >= 1) {

@@ -28,10 +28,13 @@ void MOTBenchmark::start(bool save) {
     sort.setTracker(tracker);
     sort.saveResults();
 
+    std::stringstream fpsStats;
+
     while (!dataset->empty()) {
         AqSysMOT *it = &dataset->front();
         it->load();
         detector->setAqsys(&*it);
+        sort.setFrameCounter(it->frameCounter());
         LOG_INFO("Running on " + it->getName());
         int detectionFPS = 0;
         int sortFPS      = 0;
@@ -52,10 +55,18 @@ void MOTBenchmark::start(bool save) {
                 static_cast<int>(1 / (detectionDuration.count() * 1e-6));
             v_detectionFPS.push_back(detectionFPS);
 
+            // As in SORT original paper, only "person" at min 50%
+            std::vector<Metadata> detections =
+                detector->getDetections("person", 0.5);
+
+            // for (auto it = detections.begin(); it != detections.end(); it++)
+            // {
+            //     LOG_INFO("Class is " << it->label);
+            // }
             // If there are detections, update trackers
-            if (detector->getDetections().size() > 0) {
+            if (detections.size() > 0) {
                 auto sortStart = clk::high_resolution_clock::now();
-                sort.update(detector->getDetections());
+                sort.update(detections);
                 auto sortStop = clk::high_resolution_clock::now();
                 clk::duration<double, std::micro> sortDuration =
                     (sortStop - sortStart);
@@ -83,10 +94,30 @@ void MOTBenchmark::start(bool save) {
                  << " max "
                  << *max_element(v_detectionFPS.begin(), v_detectionFPS.end())
                  << " avg " << avgDetFPS);
+        fpsStats << it->getName() << ":\n"
+                 << "\t- det_fps:"
+                 << "\n"
+                 << "\t\t- min: "
+                 << *min_element(v_detectionFPS.begin(), v_detectionFPS.end())
+                 << "\n"
+                 << "\t\t- max: "
+                 << *max_element(v_detectionFPS.begin(), v_detectionFPS.end())
+                 << "\n"
+                 << "\t\t- mean: " << avgDetFPS << "\n"
+                 << "\t- sort_fps:"
+                 << "\n"
+                 << "\t\t- min: "
+                 << *min_element(v_sortFPS.begin(), v_sortFPS.end()) << "\n"
+                 << "\t\t- max: "
+                 << *max_element(v_sortFPS.begin(), v_sortFPS.end()) << "\n"
+                 << "\t\t- mean: " << avgSortFPS << "\n";
         std::string outputFile = it->getName() + ".txt";
         fs::path outputPath    = rootFolder / fs::path(outputFile);
         sort.writeTrackingResults(outputPath.string());
         dataset->pop();
         sort.clean();
     }
+    fs::path fpsOutputFile = rootFolder / fs::path("fps_stats.yml");
+    std::ofstream fpsFile(fpsOutputFile.string());
+    fpsFile << fpsStats.str();
 }

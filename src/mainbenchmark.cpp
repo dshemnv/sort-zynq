@@ -78,7 +78,7 @@ int main(int argc, char const *argv[]) {
         } else {
             if (vm["classes"].as<std::string>() == "coco") {
                 labels = cocoLabels;
-            } else if (vm["classses"].as<std::string>() == "voc") {
+            } else if (vm["classes"].as<std::string>() == "voc") {
                 labels = vocLabels;
             } else if (vm["classes"].as<std::string>() == "adas") {
                 labels = adasLabels;
