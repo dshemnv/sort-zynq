@@ -3,7 +3,7 @@
 
 Sort::Sort(int maxAge, int minHits, double iouThreshold)
     : maxAge(maxAge), minHits(minHits), iouThreshold(iouThreshold),
-      lsapSolver(nullptr), trackCreator(nullptr), frameCounter(0) {
+      lsapSolver(nullptr), trackCreator(nullptr), hitCounter(0) {
 
     config.F                = cv::Mat1d::eye(KF_N, KF_N); // F
     config.F.at<double>(4)  = 1.0;
@@ -99,8 +99,10 @@ cv::Mat Sort::iou(const cv::Mat &bb1, const cv::Mat &bb2) {
 void Sort::setIOUSolver(SolverBase *solver) { lsapSolver = solver; }
 void Sort::setTracker(KalmanCreator *tracker) { trackCreator = tracker; }
 
+void Sort::setFrameCounter(int &counter) { frameCounter = &counter; }
+
 void Sort::update(std::vector<Metadata> &detections) {
-    frameCounter += 1;
+    hitCounter += 1;
     assert(lsapSolver != nullptr);
     assert(trackCreator != nullptr);
     cv::Mat predictedPositions = cv::Mat1d::zeros(tracklets.size(), 4);
@@ -158,7 +160,7 @@ void Sort::update(std::vector<Metadata> &detections) {
 
             cv::Rect bb = it->boundingBox();
             // clang-format off
-            trackingResult << frameCounter     << ", " 
+            trackingResult << *frameCounter     << ", " 
                            << it->id           << ", "
                            << bb.tl().x        << ", "
                            << bb.tl().y        << ", " 
@@ -179,7 +181,7 @@ bool Sort::isDead(Tracklet &track) {
     if (track.timeSinceUpdate > maxAge) {
         return true;
     } else if (track.timeSinceUpdate < 1) {
-        if ((track.hitStreak >= minHits) || (frameCounter <= minHits)) {
+        if ((track.hitStreak >= minHits) || (hitCounter <= minHits)) {
             return false;
         }
     }
@@ -196,7 +198,7 @@ void Sort::writeTrackingResults(const std::string &filename) {
     LOG_INFO("Saved tracking info");
 }
 
-int Sort::getFrameCnt() { return frameCounter; }
+int Sort::getFrameCnt() { return hitCounter; }
 
 cv::Mat detToSort(Metadata &detection) {
     // [x, y, w, h] -> [x, y, s, r, x', y', s']
@@ -334,7 +336,8 @@ void Sort::associateDetToTrack(std::vector<Metadata> &detections,
 
 // Clean-up
 void Sort::clean() {
-    frameCounter = 0;
+    hitCounter = 0;
+    trackingResult.str("");
     trackingResult.clear();
     tracklets.clear();
 }

@@ -47,6 +47,7 @@ class AqSysFiles : public AqSys {
     const cv::Mat &getCurrentFrame();
     const std::string &getName();
     int index();
+    int &frameCounter();
     int size();
 };
 

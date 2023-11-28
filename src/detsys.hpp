@@ -125,7 +125,9 @@ class YOLODPU : public DetSys {
     void detect();
     void detect_mt(int n_threads);
     std::vector<Metadata> yoloResultToMetadata(vitis::ai::YOLOv3Result &result);
-    std::vector<Metadata> &getDetections();
+    std::vector<Metadata>
+    getDetections(const std::string &label_filter = std::string(),
+                  const double precision_filter   = 0);
     std::vector<cv::Rect> getBb();
     void start();
     void stop();

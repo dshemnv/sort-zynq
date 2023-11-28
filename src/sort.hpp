@@ -32,8 +32,9 @@ class Sort {
     int maxAge;
     int minHits;
     double iouThreshold;
-    int frameCounter;
+    int hitCounter;
     bool save;
+    int *frameCounter;
 
     std::stringstream trackingResult;
 
@@ -49,6 +50,7 @@ class Sort {
     ~Sort();
     cv::Mat iou(const cv::Mat &bb1, const cv::Mat &bb2);
     void setTracker(KalmanCreator *tracker);
+    void setFrameCounter(int &counter);
     void setIOUSolver(SolverBase *solver);
     void update(std::vector<Metadata> &detections);
     bool isDead(Tracklet &track);

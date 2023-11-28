@@ -206,7 +206,21 @@ YOLODPU::yoloResultToMetadata(vitis::ai::YOLOv3Result &result) {
     return output;
 }
 
-std::vector<Metadata> &YOLODPU::getDetections() { return currentDetections; }
+std::vector<Metadata> YOLODPU::getDetections(const std::string &label_filter,
+                                             const double precision_filter) {
+    if (!label_filter.empty()) {
+        std::vector<Metadata> filtered;
+        for (std::vector<Metadata>::iterator it = currentDetections.begin();
+             it != currentDetections.end(); it++) {
+            if (it->label == label_filter &&
+                it->probability >= precision_filter) {
+                filtered.push_back(*it);
+            }
+        }
+        return filtered;
+    }
+    return currentDetections;
+}
 
 std::vector<cv::Rect> YOLODPU::getBb() {
     detect();

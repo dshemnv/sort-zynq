@@ -28,6 +28,8 @@ const std::string &AqSysFiles::getName() { return name; }
 
 int AqSysFiles::index() { return (currentFrameIdx - 1); }
 
+int &AqSysFiles::frameCounter() { return currentFrameIdx; }
+
 int AqSysFiles::size() { return imgPaths.size(); }
 
 // AqSysJPEGFiles::AqSysJPEGFiles(const std::string &folder)
@@ -223,11 +225,11 @@ void AqSysMOT::load() {
     }
 
     // Load dataset images in acqsys
-    LOG_INFO("Loading " << name);
+    // LOG_INFO("Loading " << name);
     // TOOD: Maybe use OpenMP to load images in parallel ? see
     // https://stackoverflow.com/questions/18669296/c-openmp-parallel-for-loop-alternatives-to-stdvector
     for (int i = 0; i < globResult.gl_pathc; i++) {
-        printProgress(i, globResult.gl_pathc);
+        //     printProgress(i, globResult.gl_pathc);
         addImgFile(std::string(globResult.gl_pathv[i]));
     }
     std::cout << std::endl;
