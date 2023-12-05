@@ -5,6 +5,7 @@
 #include <boost/program_options.hpp>
 #include <iterator>
 #include <queue>
+#include <regex>
 
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
@@ -73,8 +74,18 @@ int main(int argc, char const *argv[]) {
 
         std::string *labels;
         if (!vm.count("classes")) {
-            LOG_INFO("No classes file provided, using default VOC classes");
-            labels = vocLabels;
+            LOG_INFO("No classes file provided, using default VOC classes, "
+                     "trying to find the classes from model name");
+            if (std::regex_search(yoloModel, std::regex("adas"))) {
+                labels = adasLabels;
+            } else if (std::regex_search(yoloModel, std::regex("voc"))) {
+                labels = vocLabels;
+            } else if (std::regex_search(yoloModel, std::regex("yolov4"))) {
+                labels = cocoLabels;
+            } else {
+                LOG_ERR("Unable to find the corresponding classes.");
+                exit(EXIT_FAILURE);
+            }
         } else {
             if (vm["classes"].as<std::string>() == "coco") {
                 labels = cocoLabels;

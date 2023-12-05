@@ -13,3 +13,6 @@
 [submodule "extern/trackeval"]
 	path = extern/trackeval
 	url = https://github.com/JonathonLuiten/TrackEval
+[submodule "extern/darknet"]
+	path = extern/darknet
+	url = https://github.com/AlexeyAB/darknet.git
