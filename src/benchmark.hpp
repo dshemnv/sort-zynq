@@ -17,14 +17,14 @@ class MOTBenchmark {
     benchResults results;
     Sort sort;
     SolverBase *solver;
-    YOLODPU *detector;
+    DetSys *detector;
     KalmanCreator *tracker;
     std::queue<AqSysMOT> *dataset;
     std::string rootFolder;
 
   public:
     MOTBenchmark();
-    MOTBenchmark(std::queue<AqSysMOT> *dataset, YOLODPU *detector,
+    MOTBenchmark(std::queue<AqSysMOT> *dataset, DetSys *detector,
                  SolverBase *lsap_solver, KalmanCreator *trackerFactory,
                  const std::string &name);
     ~MOTBenchmark();

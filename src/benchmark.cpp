@@ -12,7 +12,7 @@ MOTBenchmark::MOTBenchmark() {}
 
 MOTBenchmark::~MOTBenchmark() {}
 
-MOTBenchmark::MOTBenchmark(std::queue<AqSysMOT> *dataset, YOLODPU *detector,
+MOTBenchmark::MOTBenchmark(std::queue<AqSysMOT> *dataset, DetSys *detector,
                            SolverBase *solver, KalmanCreator *trackerFactory,
                            const std::string &name)
     : detector(detector), solver(solver), dataset(dataset),
@@ -62,7 +62,10 @@ void MOTBenchmark::start(bool save) {
             // for (auto it = detections.begin(); it != detections.end(); it++)
             // {
             //     LOG_INFO("Class is " << it->label);
+            //     LOG_INFO(it->x << " " << it->y << " " << it->height << " "
+            //                    << it->width);
             // }
+            // exit(EXIT_FAILURE);
             // If there are detections, update trackers
             if (detections.size() > 0) {
                 auto sortStart = clk::high_resolution_clock::now();
