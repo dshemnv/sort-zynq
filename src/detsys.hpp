@@ -63,11 +63,15 @@ struct Metadata {
 
 class DetSys {
   public:
-    virtual void start() = 0;
-    virtual void stop()  = 0;
+    virtual void start(){};
+    virtual void stop(){};
     virtual ~DetSys(){};
     virtual std::vector<cv::Rect> getBb() = 0;
-    virtual void setAqsys(AqSys *aqsys)   = 0;
+    virtual void setAqsys(AqSys *aqsys){};
+    virtual std::vector<Metadata> getDetections(){};
+    virtual std::vector<Metadata> getDetections(const std::string &label_filter,
+                                                double precision_filter){};
+    virtual void detect(){};
 };
 
 class MOTData : public DetSys {
