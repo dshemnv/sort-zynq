@@ -194,6 +194,7 @@ const cv::Mat &KalmanEigen<N_STATES, N_MEAS>::getState() {
 
 template <size_t N_STATES, size_t N_MEAS>
 void KalmanEigen<N_STATES, N_MEAS>::setState(const cv::Mat &newState) {
+    assert((newState.cols == 1) && (newState.rows == KF_N));
     cv::cv2eigen(newState, X);
 }
 
@@ -209,6 +210,7 @@ const cv::Mat &KalmanEigen<N_STATES, N_MEAS>::predict() {
 
 template <size_t N_STATES, size_t N_MEAS>
 void KalmanEigen<N_STATES, N_MEAS>::update(const cv::Mat &meas) {
+    assert((meas.cols == 1) && (meas.rows == 4));
     Eigen::MatrixXd measure;
     cv::cv2eigen<double>(meas, measure);
 
@@ -227,6 +229,7 @@ void KalmanEigen<N_STATES, N_MEAS>::load(kalmanConfig config) {
     cv::cv2eigen<double>(config.H, H);
     cv::cv2eigen<double>(config.Q, Q);
     cv::cv2eigen<double>(config.R, R);
+    cv::cv2eigen<double>(config.P, P);
 }
 
 template <size_t N_STATES, size_t N_MEAS>

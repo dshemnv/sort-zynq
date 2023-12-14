@@ -3,6 +3,8 @@
 #include "lsap_solver.hpp"
 
 class Tracklet {
+    friend std::ostream &operator<<(std::ostream &os, Tracklet t);
+
   protected:
     static int idCounter;
 
@@ -20,7 +22,7 @@ class Tracklet {
     int age;
     int timeSinceUpdate;
     cv::Rect boundingBox();
-    const cv::Mat &prediction();
+    const Metadata &prediction();
     const cv::Mat &getState();
     Metadata getLatestDetection();
     const cv::Scalar &getColor();
@@ -53,7 +55,9 @@ class Sort {
     void setFrameCounter(int &counter);
     void setIOUSolver(SolverBase *solver);
     void update(std::vector<Metadata> &detections);
+    void prune();
     bool isDead(Tracklet &track);
+    bool isCorrect(Tracklet &track);
     void saveResults();
     void writeTrackingResults(const std::string &filename);
     int getFrameCnt();

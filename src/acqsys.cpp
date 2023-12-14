@@ -201,7 +201,9 @@ const cv::Mat &AqSysCam::getCurrentFrame() {
 bool AqSysCam::eof() { return !stream.isOpened(); }
 int AqSysCam::index() { return currentFrameIdx; }
 
-AqSysMOT::AqSysMOT(const std::string &folder) : path(folder) {}
+AqSysMOT::AqSysMOT(const std::string &folder) : path(folder) {
+    name = folder.substr(folder.find_last_of("/") + 1);
+}
 
 void AqSysMOT::load() {
     glob_t globResult;

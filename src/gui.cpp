@@ -21,6 +21,9 @@ void GUI::toggleBb() { showBb = !showBb; }
 
 void GUI::drawBb(const cv::Rect &bb, const std::string &label,
                  const cv::Scalar &color) {
+    if (currentFrame.empty()) {
+        currentFrame = aqsys->getCurrentFrame();
+    }
     cv::HersheyFonts font = cv::FONT_HERSHEY_SIMPLEX;
     double fontScale      = 1.0;
     int thickness         = 2;
@@ -41,7 +44,7 @@ void GUI::drawBb(const cv::Rect &bb, const std::string &label,
 
 void GUI::drawFromDetections(std::vector<Metadata> &dets) {
     // LOG_INFO("SORT BBS");
-    for (std::vector<Metadata>::iterator it = dets.begin(); it < dets.end();
+    for (std::vector<Metadata>::iterator it = dets.begin(); it != dets.end();
          it++) {
 
         drawBb(it->toBb(), it->label, it->color);
@@ -72,4 +75,9 @@ void GUI::addFPS(int fps, const std::string &text, const cv::Point &pos) {
                 cv::FONT_HERSHEY_SIMPLEX, 2, cv::Scalar(0, 0, 255), 2);
 }
 
-void GUI::show() { cv::imshow(name, currentFrame); }
+void GUI::show() {
+    if (currentFrame.empty()) {
+        currentFrame = aqsys->getCurrentFrame();
+    }
+    cv::imshow(name, currentFrame);
+}

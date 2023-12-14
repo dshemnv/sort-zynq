@@ -53,24 +53,24 @@ cv::Mat Sort::iou(const cv::Mat &bb1, const cv::Mat &bb2) {
             double maxYbr = cv::min(bb1.at<double>(newDetIdx, 3),
                                     bb2.at<double>(trackPredIdx, 3));
 
-            double intersectionWidth  = cv::max(0.0, maxXbr - maxXtl);
-            double intersectionHeight = cv::max(0.0, maxYbr - maxYtl);
+            double intersectionWidth  = cv::max(0.0, maxXbr - maxXtl + 1.0);
+            double intersectionHeight = cv::max(0.0, maxYbr - maxYtl + 1.0);
 
             double intersectionArea = intersectionHeight * intersectionWidth;
 
-            double bb1Area =
-                (bb1.at<double>(newDetIdx, 2) - bb1.at<double>(newDetIdx, 0)) *
-                (bb1.at<double>(newDetIdx, 3) - bb1.at<double>(newDetIdx, 1));
+            double bb1Area = (bb1.at<double>(newDetIdx, 2) -
+                              bb1.at<double>(newDetIdx, 0) + 1.0) *
+                             (bb1.at<double>(newDetIdx, 3) -
+                              bb1.at<double>(newDetIdx, 1) + 1.0);
             double bb2Area = (bb2.at<double>(trackPredIdx, 2) -
-                              bb2.at<double>(trackPredIdx, 0)) *
+                              bb2.at<double>(trackPredIdx, 0) + 1.0) *
                              (bb2.at<double>(trackPredIdx, 3) -
-                              bb2.at<double>(trackPredIdx, 1));
+                              bb2.at<double>(trackPredIdx, 1) + 1.0);
 
             double iouVal =
                 intersectionArea / (bb1Area + bb2Area - intersectionArea);
 
-            output.at<double>(newDetIdx, trackPredIdx) =
-                intersectionArea / (bb1Area + bb2Area - intersectionArea);
+            output.at<double>(newDetIdx, trackPredIdx) = iouVal;
         }
     }
 
@@ -102,22 +102,29 @@ void Sort::setTracker(KalmanCreator *tracker) { trackCreator = tracker; }
 void Sort::setFrameCounter(int &counter) { frameCounter = &counter; }
 
 void Sort::update(std::vector<Metadata> &detections) {
+    // FIXME: Some tracks shouldn't appear, comparison with the Python version
+    // doesn't match. Maybe check the condition line 310 in sort.py ?
     hitCounter += 1;
     assert(lsapSolver != nullptr);
     assert(trackCreator != nullptr);
     cv::Mat predictedPositions = cv::Mat1d::zeros(tracklets.size(), 4);
     std::vector<int> NaNRows;
     // Step 1: Predict position for existing tracklets
+    // LOG_INFO("Tracklets before prediction");
     for (int idx = 0; idx < tracklets.size(); idx++) {
-        cv::Mat predictedState = tracklets[idx].prediction();
-        cv::Mat predictedPos   = stateToPos(predictedState).reshape(0, 1);
+        // std::cout << tracklets[idx] << std::endl;
+        // std::cout << tracklets[idx].boundingBox() << std::endl;
+
+        Metadata predicted   = tracklets[idx].prediction();
+        cv::Mat predictedPos = predicted.toBbMat().reshape(0, 1);
         if (hasNan(predictedPos)) {
             NaNRows.push_back(idx);
         }
         predictedPos.copyTo(predictedPositions.row(idx));
     }
+    // LOG_INFO("====");
     // Remove NaN rows
-    for (std::vector<int>::iterator it = NaNRows.begin(); it < NaNRows.end();
+    for (std::vector<int>::iterator it = NaNRows.begin(); it != NaNRows.end();
          it++) {
         removeRow<double>(predictedPositions, *it);
     }
@@ -132,12 +139,13 @@ void Sort::update(std::vector<Metadata> &detections) {
 
     // Step 3: Updated matched tracklets
     for (std::vector<std::vector<int>>::iterator it = matched.begin();
-         it < matched.end(); it++) {
+         it != matched.end(); it++) {
         tracklets.at(it->at(1)).update(detections.at(it->at(0)));
     }
 
     // Step 4: Initiate tracklets for unmatched detections
-    for (int idx = 0; idx < unmatchedDetections.size(); idx++) {
+    // for (int idx = 0; idx < unmatchedDetections.size(); idx++) {
+    for (int idx = unmatchedDetections.size() - 1; idx >= 0; idx--) {
         KalmanBase *newTracker = trackCreator->create();
         newTracker->load(config);
         cv::Mat state = detToSort(unmatchedDetections[idx]);
@@ -145,45 +153,74 @@ void Sort::update(std::vector<Metadata> &detections) {
         Tracklet newTracklet(newTracker, unmatchedDetections[idx]);
         tracklets.push_back(newTracklet);
     }
-    // Step 5: Clean dead tracklets
-    if (tracklets.size() != 0) {
-        for (std::vector<Tracklet>::iterator it = tracklets.begin();
-             it < tracklets.end(); it++) {
-            if (isDead(*it)) {
-                tracklets.erase(it);
+
+    // if ((*frameCounter == 3) || (*frameCounter == 4) || (*frameCounter == 5))
+    // {
+    //     LOG_INFO("Before filtering");
+    //     for (auto &trk : tracklets) {
+    //         std::cout << trk << std::endl;
+    //         std::cout << trk.boundingBox() << std::endl;
+    //     }
+    //     LOG_INFO("After filtering");
+    //     for (auto &trk : tracklets) {
+    //         if (isCorrect(trk)) {
+    //             std::cout << trk << std::endl;
+    //             std::cout << trk.boundingBox() << std::endl;
+    //         }
+    //     }
+    // }
+    // DEBUG
+    // if (hitCounter >= 15 && hitCounter <= 17) {
+    //     LOG_INFO("==== " << hitCounter << " ====");
+    //     for (auto &trk : tracklets) {
+    //         if (isCorrect(trk)) {
+    //             std::cout << trk << std::endl;
+    //         }
+    //     }
+    // } else if (hitCounter > 17) {
+    //     exit(EXIT_FAILURE);
+    // }
+    // // END DEBUG
+    // LOG_INFO("Bounding boxes for frame " << *frameCounter);
+    // for (auto &trk : tracklets) {
+    //     std::cout << trk.boundingBox() << std::endl;
+    // }
+
+    if (save) {
+        for (std::vector<Tracklet>::reverse_iterator it = tracklets.rbegin();
+             it != tracklets.rend(); it++) {
+            // Filter results before saving
+            if (isCorrect(*it)) {
+                cv::Rect bb = it->boundingBox();
+                // clang-format off
+                trackingResult << *frameCounter     << ", " 
+                                << it->id           << ", "
+                                << bb.tl().x        << ", "
+                                << bb.tl().y        << ", " 
+                                << bb.width         << ", " 
+                                << bb.height        << ", "
+                                << "1, "
+                                << "-1, "
+                                << "-1 ,"
+                                << "-1 " 
+                                << std::endl;
+                // clang-format on
             }
         }
     }
-    if (save) {
-        for (std::vector<Tracklet>::iterator it = tracklets.begin();
-             it < tracklets.end(); it++) {
-
-            cv::Rect bb = it->boundingBox();
-            // clang-format off
-            trackingResult << *frameCounter     << ", " 
-                           << it->id           << ", "
-                           << bb.tl().x        << ", "
-                           << bb.tl().y        << ", " 
-                           << bb.width         << ", " 
-                           << bb.height        << ", "
-                           << "1, "
-                           << "-1, "
-                           << "-1 ,"
-                           << "-1 " 
-                           << std::endl;
-            // clang-format on
-        }
-    }
-    // LOG_INFO("Active tracklets: " << tracklets.size());
 }
 
 bool Sort::isDead(Tracklet &track) {
     if (track.timeSinceUpdate > maxAge) {
         return true;
-    } else if (track.timeSinceUpdate < 1) {
-        if ((track.hitStreak >= minHits) || (hitCounter <= minHits)) {
-            return false;
-        }
+    }
+    return false;
+}
+
+bool Sort::isCorrect(Tracklet &track) {
+    if ((track.timeSinceUpdate < 1) &&
+        ((track.hitStreak >= minHits) || (hitCounter <= minHits))) {
+        return true;
     }
     return false;
 }
@@ -199,6 +236,16 @@ void Sort::writeTrackingResults(const std::string &filename) {
 }
 
 int Sort::getFrameCnt() { return hitCounter; }
+
+std::ostream &operator<<(std::ostream &os, Tracklet t) {
+    Metadata tmp = t.getLatestDetection();
+    os << "Tracklet: " << t.id << "\n"
+       << "Time since update: " << t.timeSinceUpdate << " | "
+       << "Hit streak hits: " << t.hitStreak << "\n"
+       << "State:\n"
+       << sortToDet(tmp, t.getState(), t.id).toBbMat().reshape(0, 1);
+    return os;
+}
 
 cv::Mat detToSort(Metadata &detection) {
     // [x, y, w, h] -> [x, y, s, r, x', y', s']
@@ -233,13 +280,17 @@ cv::Mat stateToPos(const cv::Mat &state) {
 }
 
 Metadata sortToDet(Metadata &latestDet, const cv::Mat &currentPos, int id) {
-    // [x_tl, y_tl, x_br, y_br] -> [x, y, w, h, prob, label]
-    double width  = currentPos.at<double>(2) - currentPos.at<double>(0);
-    double height = currentPos.at<double>(3) - currentPos.at<double>(1);
+    // currentPos: [x, y, s, r, x', y', s']
+    // Metadata:   [x, y, w, h, prob, label]
+    // w = sqrt(s * r) | h = s / w
+
+    double width =
+        cv::sqrt(currentPos.at<double>(2) * currentPos.at<double>(3));
+    double height = currentPos.at<double>(2) / width;
 
     // clang-format off
-    Metadata det(currentPos.at<double>(0) + (width / 2.0),
-                 currentPos.at<double>(1) + (height / 2.0), 
+    Metadata det(currentPos.at<double>(0),
+                 currentPos.at<double>(1), 
                  height, 
                  width,
                  "ID " + std::to_string(id) + " " + latestDet.label,
@@ -252,24 +303,25 @@ std::vector<Metadata> Sort::getCorrectedDetections() {
     std::vector<Metadata> output;
     for (std::vector<Tracklet>::iterator it = tracklets.begin();
          it != tracklets.end(); ++it) {
-        cv::Mat currentState = it->getState();         // [x,y,s,r,x',y',s']
-        cv::Mat currentPos = stateToPos(currentState); // [x_tl,y_tl,x_br,y_br]
-        Metadata latestDet = it->getLatestDetection(); // [x,y,w,h]
-        Metadata currentDet =
-            sortToDet(latestDet, currentPos, it->id); // Convert to metadata
-        currentDet.setColor(it->getColor());
-
-        // LOG_INFO("Latest det \n"
-        //          << latestDet.x << " " << latestDet.y << " " <<
-        //          latestDet.height
-        //          << " " << latestDet.width)
-        // LOG_INFO("Current det (predicted) \n"
-        //          << currentDet.x << " " << currentDet.y << " "
-        //          << currentDet.height << " " << currentDet.width)
-
-        output.push_back(currentDet);
+        // Filtering output
+        if (isCorrect(*it)) {
+            cv::Mat currentState =
+                it->getState().reshape(0, 1); // [x,y,s,r,x',y',s']
+            Metadata latestDet  = it->getLatestDetection(); // [x,y,w,h,l,p]
+            Metadata currentDet = sortToDet(latestDet, currentState,
+                                            it->id); // Convert to metadata
+            currentDet.setColor(it->getColor());
+            output.push_back(currentDet);
+        }
     }
     return output;
+}
+
+void Sort::prune() {
+    tracklets.erase(
+        std::remove_if(tracklets.begin(), tracklets.end(),
+                       [this](Tracklet t) { return this->isDead(t); }),
+        tracklets.end());
 }
 
 void Sort::associateDetToTrack(std::vector<Metadata> &detections,
@@ -296,9 +348,26 @@ void Sort::associateDetToTrack(std::vector<Metadata> &detections,
         detMat.copyTo(detectionsMat.row(idx));
     }
 
+    // DEBUG
+    // LOG_INFO("Running LSAP solver for frame " << *frameCounter);
+    // if ((*frameCounter == 3) || (*frameCounter == 4) || (*frameCounter == 5))
+    // {
+    //     LOG_INFO("Detections matrix going to batch iou");
+    //     std::cout << detectionsMat << std::endl;
+    //     LOG_INFO("Prediction matrix going into iou")
+    //     std::cout << predictedPos << std::endl;
+    // }
+    // END DEBUG
+
     // Calculate IOU
     // FIXME: Size mismatch
     cv::Mat iouMat = iou(detectionsMat, predictedPos);
+
+    // if ((*frameCounter == 3) || (*frameCounter == 4) || (*frameCounter == 5))
+    // {
+    //     LOG_INFO("IOU Mat")
+    //     std::cout << iouMat << std::endl;
+    // }
 
     // Solve IOU matrix
     cv::Mat assignment;
@@ -307,18 +376,29 @@ void Sort::associateDetToTrack(std::vector<Metadata> &detections,
 
     lsapSolver->solve(iouMat, assignment, indexes);
 
+    // if ((*frameCounter == 3) || (*frameCounter == 4) || (*frameCounter == 5))
+    // {
+    //     LOG_INFO("Detections matrix going to batch iou");
+
+    //     LOG_INFO("Assignment result")
+    //     std::cout << assignment << std::endl;
+    //     LOG_INFO("Indexes result")
+    //     std::cout << indexes << std::endl;
+    // }
+
     cv::vconcat(assignment, indexes, matchedResult);
 
-    // Iterate over matchedResult cols to have tuples of assignment and indexes
+    // Iterate over matchedResult cols to have tuples of assignment and
+    // indexes
     for (int col = 0; col < matchedResult.cols; col++) {
-        int assigned = matchedResult.col(col).at<int>(0);
-        int idx      = matchedResult.col(col).at<int>(1);
+        int assigned = matchedResult.col(col).at<int>(0); // idx du tracker
+        int idx      = matchedResult.col(col).at<int>(1); // idx de la detection
 
         if (iouMat.at<double>(idx, assigned) < iouThreshold) {
             unmatchedDetection.push_back(detections.at(idx));
             unmatchedTrackers.push_back(assigned);
         } else {
-            std::vector<int> goodMatch = {idx, assigned};
+            std::vector<int> goodMatch = {idx, assigned}; //{detection, tracker}
             matched.push_back(goodMatch);
         }
     }
@@ -343,7 +423,7 @@ void Sort::clean() {
 }
 
 // FIXME: This will not work with multithreading
-int Tracklet::idCounter = 0;
+int Tracklet::idCounter = 1;
 
 Tracklet::Tracklet(KalmanBase *tracker, Metadata &firstDetection)
     : tracker(tracker), id(idCounter++), age(0), hitStreak(0),
@@ -361,29 +441,29 @@ const cv::Scalar &Tracklet ::getColor() { return color; }
 // Returns a bounding box from latest predicted detection added to history
 cv::Rect Tracklet::boundingBox() {
     cv::Mat currentState     = tracker->getState();
-    cv::Mat currentPos       = stateToPos(currentState);
-    Metadata currentPosition = sortToDet(addedHistory.back(), currentPos, id);
-
+    Metadata currentPosition = sortToDet(addedHistory.back(), currentState, id);
     return currentPosition.toBb();
 }
 
-const cv::Mat &Tracklet::prediction() {
+const Metadata &Tracklet::prediction() {
+    // retunrns [x, y, w, h, p, l]
     age++;
     if (timeSinceUpdate > 0) {
         hitStreak = 0;
     }
     timeSinceUpdate++;
-    cv::Mat predictedStateMat = tracker->predict();
+    cv::Mat predictedStateMat = tracker->getState().reshape(0, 1);
     if (predictedStateMat.at<double>(6) + predictedStateMat.at<double>(2) <=
         0) {
         predictedStateMat.at<double>(6) *= 0.0;
-        tracker->setState(predictedStateMat); // Update tracker info
+        tracker->setState(
+            predictedStateMat.reshape(0, KF_N)); // Update tracker info
     }
     Metadata predictedState =
-        sortToDet(addedHistory.back(), predictedStateMat, id);
+        sortToDet(addedHistory.back(), tracker->predict().reshape(0, 1), id);
     predictedState.setColor(color);
     predictedHistory.push(predictedState);
-    return tracker->getState();
+    return predictedHistory.back();
 }
 
 // Returns current state in the Kalman Filter
@@ -395,10 +475,13 @@ Metadata Tracklet::getLatestDetection() { return addedHistory.back(); }
 void Tracklet::update(Metadata detection) {
     timeSinceUpdate = 0;
     hitStreak += 1;
+
     std::queue<Metadata> empty;
     std::swap(predictedHistory, empty); // clears predictedHistory
+
     addedHistory.push(detection);
     cv::Mat detMat = detection.toSort();
+
     tracker->update(detMat);
 }
 

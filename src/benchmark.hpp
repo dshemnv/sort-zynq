@@ -21,6 +21,7 @@ class MOTBenchmark {
     KalmanCreator *tracker;
     std::queue<AqSysMOT> *dataset;
     std::string rootFolder;
+    bool showImg;
 
   public:
     MOTBenchmark();
