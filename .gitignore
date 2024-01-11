@@ -17,3 +17,5 @@ test
 .venv
 bench_results
 mot_data
+docs/latex
+docs/html

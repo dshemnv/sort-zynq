@@ -3,6 +3,7 @@
 #include "sort.hpp"
 #include <chrono>
 #include <opencv2/opencv.hpp>
+#include <regex>
 
 int main(int argc, char const *argv[]) {
 
@@ -61,10 +62,12 @@ int main(int argc, char const *argv[]) {
     GUI gui(yolo, *aq, "test");
     /* ---------------------------------------------------------------------- */
 
-    if (yoloModel == "yolov3_adas_pruned_0_9") {
+    if (std::regex_search(yoloModel, std::regex("adas"))) {
         yolo.setLabels(adasLabels);
-    } else if (yoloModel == "yolov3_voc_tf") {
+    } else if (std::regex_search(yoloModel, std::regex("voc"))) {
         yolo.setLabels(vocLabels);
+    } else if (std::regex_search(yoloModel, std::regex("yolov4"))) {
+        yolo.setLabels(cocoLabels);
     } else {
         LOG_ERR("Wrong model");
         exit(EXIT_FAILURE);
@@ -96,7 +99,8 @@ int main(int argc, char const *argv[]) {
             double yoloFPStime = yoloFPSdiff.count();
             int yoloFPS        = static_cast<int>(1 / (yoloFPStime * 1e-6));
 
-            std::vector<Metadata> detections = yolo.getDetections("person");
+            std::vector<Metadata> detections =
+                yolo.getDetections("person", 0.5);
             auto sortFPSstart = std::chrono::high_resolution_clock::now();
 
             if (detections.size() >= 1) {

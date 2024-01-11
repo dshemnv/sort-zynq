@@ -43,12 +43,9 @@ void GUI::drawBb(const cv::Rect &bb, const std::string &label,
 }
 
 void GUI::drawFromDetections(std::vector<Metadata> &dets) {
-    // LOG_INFO("SORT BBS");
     for (std::vector<Metadata>::iterator it = dets.begin(); it != dets.end();
          it++) {
-
         drawBb(it->toBb(), it->label, it->color);
-        // std::cout << it->toBb() << std::endl;
     }
 }
 
@@ -57,12 +54,10 @@ int GUI::nextFrame(cv::Mat *frame) {
         aqsys->getFrame();
         currentFrame = aqsys->getCurrentFrame();
         if (showBb) {
-            // LOG_INFO("MOT BBS");
             std::vector<cv::Rect> bb = detsys->getBb();
             for (std::vector<cv::Rect>::iterator it = bb.begin();
                  it != bb.end(); ++it) {
                 drawBb(*it, "test", cv::Scalar(255, 255, 255));
-                // std::cout << *it << std::endl;
             }
         }
         return 0;

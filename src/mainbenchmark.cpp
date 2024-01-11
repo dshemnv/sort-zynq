@@ -19,8 +19,12 @@ int main(int argc, char const *argv[]) {
         desc.add_options()
             ("help", "outputs help")
             ("mot_folder", po::value<std::string>(),"path to MOT folder (should end with test or train)")
-            ("model", po::value<std::string>(),"YOLO model name (the actual model should be located in '/usr/share/vitis_ai'")
+            ("sequence", po::value<std::string>(),"Sequence name, for a single tracking example")
+            ("benchmark", "enables benchmarking")
+            ("model", po::value<std::string>(),"YOLO model name (the actual model)")
             ("classes", po::value<std::string>(),"classes dataset name")
+            ("show", "show results")
+            ("save", "save the results to file")
         ;
         // clang-format on
 
@@ -56,12 +60,20 @@ int main(int argc, char const *argv[]) {
         for (std::vector<std::string>::iterator it = subfolders.begin();
              it != subfolders.end(); ++it) {
             // LOG_INFO(*it);
-            AqSysMOT d(*it);
-            datasets.push(d);
+            if (!vm.count("sequence")) {
+                AqSysMOT d(*it);
+                datasets.push(d);
+            } else if (std::regex_search(
+                           *it, std::regex(vm["sequence"].as<std::string>()))) {
+                AqSysMOT d(*it);
+                datasets.push(d);
+            } else {
+                continue;
+            }
         }
 
         KalmanCreatorFactory<KalmanEigen<KF_N, KF_M>> kalmanFactory;
-        AuctionNaive auction(0.001);
+        AuctionNaive auction(0.01);
 
         std::string yoloModel;
         if (!vm.count("model")) {
@@ -103,7 +115,12 @@ int main(int argc, char const *argv[]) {
                                      "SORTZYNQ" + std::string("_") + yoloModel);
         LOG_INFO("Starting benchmark on " << rootMOTFolder << " with "
                                           << yoloModel);
-        bench.start(true);
+
+        if (vm.count("show")) {
+            LOG_INFO("Showing on screen");
+            bench.show();
+        }
+        bench.start(vm.count("save"));
         LOG_INFO("Benchmark end");
 
     } catch (const std::exception &e) {

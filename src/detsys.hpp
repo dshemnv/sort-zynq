@@ -2,9 +2,10 @@
 #define DETSYS_H
 #include "acqsys.hpp"
 #include <glob.h>
+#include <iostream>
 #include <opencv2/opencv.hpp>
+#include <ostream>
 #ifdef DPUYOLO
-// #include <vitis/ai/demo.hpp>
 #include <vitis/ai/yolov3.hpp>
 #endif
 
@@ -27,6 +28,14 @@ struct Metadata {
         : x(x), y(y), height(height), width(width), label(label),
           probability(probability) {
         color = cv::Scalar(0, 255, 0);
+    }
+
+    friend std::ostream &operator<<(std::ostream &os, Metadata &m) {
+        os << "Bounding box: \n"
+           << m.toBbMat().reshape(0, 1) << "\n"
+           << "Label: " << m.label << ", with prob: " << m.probability * 100.0
+           << std::endl;
+        return os;
     }
 
     Metadata &operator=(const Metadata &det) {

@@ -4,6 +4,9 @@
 #include <boost/filesystem.hpp>
 #include <chrono>
 #include <iostream>
+#ifdef YOLODPU
+#include <vitis/ai/profiling.hpp>
+#endif
 
 using namespace sortzynq;
 namespace fs  = boost::filesystem;
@@ -32,14 +35,11 @@ void MOTBenchmark::start(bool save) {
     }
 
     std::stringstream fpsStats;
-    int n_dets = 0;
     while (!dataset->empty()) {
         AqSysMOT *it = &dataset->front();
         it->load();
         detector->setAqsys(&*it);
         sort.setFrameCounter(it->frameCounter());
-        // LOG_INFO("Running on " + it->getName());
-        // LOG_INFO("Frame counter value is " << it->frameCounter());
         int detectionFPS = 0;
         int sortFPS      = 0;
         std::vector<int> v_detectionFPS;
@@ -47,7 +47,6 @@ void MOTBenchmark::start(bool save) {
         while (!it->eof()) {
             // Advance frame
             it->getFrame();
-            // LOG_INFO("====== Frame " << it->frameCounter() << " ======");
 
             // Perform detection
             auto detectionStart = clk::high_resolution_clock::now();
@@ -64,37 +63,35 @@ void MOTBenchmark::start(bool save) {
             std::vector<Metadata> detections =
                 detector->getDetections("person", 0.5);
 
-            // LOG_INFO("Actual classes");
-            // for (auto it = detections.begin(); it != detections.end(); it++)
-            // {
-            //     LOG_INFO("Class is " << it->label);
-            //     LOG_INFO(it->toBbMat().reshape(0, 1));
-            // }
-            // LOG_INFO("End of detections");
-            // exit(EXIT_FAILURE);
-            // If there are detections, update trackers
-            n_dets += detections.size();
-            if (detections.size() > 0) {
-                auto sortStart = clk::high_resolution_clock::now();
-                sort.update(detections);
-                auto sortStop = clk::high_resolution_clock::now();
-                clk::duration<double, std::micro> sortDuration =
-                    (sortStop - sortStart);
+            // Update trackers (even if detections is empty)
+            auto sortStart = clk::high_resolution_clock::now();
+#ifdef YOLODPU
+            __TIC__(SORT_UPDATE)
+#endif
+            sort.update(detections);
+#ifdef YOLODPU
+            __TOC__(SORT_UPDATE)
+#endif
+            auto sortStop = clk::high_resolution_clock::now();
 
-                int sortFPS =
-                    static_cast<int>(1 / (sortDuration.count() * 1e-6));
+            clk::duration<double, std::micro> sortDuration =
+                (sortStop - sortStart);
+
+            int sortFPS = static_cast<int>(1 / (sortDuration.count() * 1e-6));
+            // Don't record value when there are no detections.
+            if (!detections.empty()) {
                 v_sortFPS.push_back(sortFPS);
-                std::vector<Metadata> corrected = sort.getCorrectedDetections();
-                if (showImg) {
-                    GUI gui(*it, "demo");
-                    std::vector<Metadata> correctedDetections =
-                        sort.getCorrectedDetections();
-                    gui.drawFromDetections(detections);
-                    gui.show();
-                    char c = (char)cv::waitKey(1);
-                    if (c == 27) {
-                        exit(EXIT_SUCCESS);
-                    }
+            }
+            std::vector<Metadata> corrected = sort.getCorrectedDetections();
+            if (showImg) {
+                GUI gui(*it, "demo");
+                std::vector<Metadata> correctedDetections =
+                    sort.getCorrectedDetections();
+                gui.drawFromDetections(detections);
+                gui.show();
+                char c = (char)cv::waitKey(1);
+                if (c == 27) {
+                    exit(EXIT_SUCCESS);
                 }
             }
             sort.prune();
@@ -107,7 +104,7 @@ void MOTBenchmark::start(bool save) {
         float avgDetFPS =
             std::accumulate(v_detectionFPS.begin(), v_detectionFPS.end(), 0.0) /
             v_detectionFPS.size();
-        LOG_INFO("Finished");
+        LOG_INFO("Finished processing " << it->getName());
         LOG_INFO("SORT FPS: min "
                  << *min_element(v_sortFPS.begin(), v_sortFPS.end()) << " max "
                  << *max_element(v_sortFPS.begin(), v_sortFPS.end()) << " avg "
@@ -120,24 +117,24 @@ void MOTBenchmark::start(bool save) {
         if (save) {
 
             fpsStats << it->getName() << ":\n"
-                     << "\t- det_fps:"
+                     << "  det_fps:"
                      << "\n"
-                     << "\t\t- min: "
+                     << "    min: "
                      << *min_element(v_detectionFPS.begin(),
                                      v_detectionFPS.end())
                      << "\n"
-                     << "\t\t- max: "
+                     << "    max: "
                      << *max_element(v_detectionFPS.begin(),
                                      v_detectionFPS.end())
                      << "\n"
-                     << "\t\t- mean: " << avgDetFPS << "\n"
-                     << "\t- sort_fps:"
+                     << "    mean: " << avgDetFPS << "\n"
+                     << "  sort_fps:"
                      << "\n"
-                     << "\t\t- min: "
+                     << "    min: "
                      << *min_element(v_sortFPS.begin(), v_sortFPS.end()) << "\n"
-                     << "\t\t- max: "
+                     << "    max: "
                      << *max_element(v_sortFPS.begin(), v_sortFPS.end()) << "\n"
-                     << "\t\t- mean: " << avgSortFPS << "\n";
+                     << "    mean: " << avgSortFPS << "\n";
             std::string outputFile = it->getName() + ".txt";
             fs::path outputPath    = rootFolder / fs::path(outputFile);
             sort.writeTrackingResults(outputPath.string());
@@ -146,7 +143,6 @@ void MOTBenchmark::start(bool save) {
         dataset->pop();
         sort.clean();
     }
-    // LOG_INFO("There was: " << n_dets << " detections");
     if (save) {
         fs::path fpsOutputFile = rootFolder / fs::path("fps_stats.yml");
         std::ofstream fpsFile(fpsOutputFile.string());

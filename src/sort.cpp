@@ -53,19 +53,18 @@ cv::Mat Sort::iou(const cv::Mat &bb1, const cv::Mat &bb2) {
             double maxYbr = cv::min(bb1.at<double>(newDetIdx, 3),
                                     bb2.at<double>(trackPredIdx, 3));
 
-            double intersectionWidth  = cv::max(0.0, maxXbr - maxXtl + 1.0);
-            double intersectionHeight = cv::max(0.0, maxYbr - maxYtl + 1.0);
+            double intersectionWidth  = cv::max(0.0, maxXbr - maxXtl);
+            double intersectionHeight = cv::max(0.0, maxYbr - maxYtl);
 
             double intersectionArea = intersectionHeight * intersectionWidth;
 
-            double bb1Area = (bb1.at<double>(newDetIdx, 2) -
-                              bb1.at<double>(newDetIdx, 0) + 1.0) *
-                             (bb1.at<double>(newDetIdx, 3) -
-                              bb1.at<double>(newDetIdx, 1) + 1.0);
+            double bb1Area =
+                (bb1.at<double>(newDetIdx, 2) - bb1.at<double>(newDetIdx, 0)) *
+                (bb1.at<double>(newDetIdx, 3) - bb1.at<double>(newDetIdx, 1));
             double bb2Area = (bb2.at<double>(trackPredIdx, 2) -
-                              bb2.at<double>(trackPredIdx, 0) + 1.0) *
+                              bb2.at<double>(trackPredIdx, 0)) *
                              (bb2.at<double>(trackPredIdx, 3) -
-                              bb2.at<double>(trackPredIdx, 1) + 1.0);
+                              bb2.at<double>(trackPredIdx, 1));
 
             double iouVal =
                 intersectionArea / (bb1Area + bb2Area - intersectionArea);
@@ -144,16 +143,15 @@ void Sort::update(std::vector<Metadata> &detections) {
     }
 
     // Step 4: Initiate tracklets for unmatched detections
-    // for (int idx = 0; idx < unmatchedDetections.size(); idx++) {
-    for (int idx = unmatchedDetections.size() - 1; idx >= 0; idx--) {
+    for (int idx = 0; idx < unmatchedDetections.size(); idx++) {
         KalmanBase *newTracker = trackCreator->create();
         newTracker->load(config);
         cv::Mat state = detToSort(unmatchedDetections[idx]);
+        // std::cout << state.reshape(0, 1) << std::endl;
         newTracker->setState(state);
         Tracklet newTracklet(newTracker, unmatchedDetections[idx]);
         tracklets.push_back(newTracklet);
     }
-
     // if ((*frameCounter == 3) || (*frameCounter == 4) || (*frameCounter == 5))
     // {
     //     LOG_INFO("Before filtering");
@@ -191,14 +189,16 @@ void Sort::update(std::vector<Metadata> &detections) {
              it != tracklets.rend(); it++) {
             // Filter results before saving
             if (isCorrect(*it)) {
-                cv::Rect bb = it->boundingBox();
+                // cv::Rect bb = it->boundingBox();
+                cv::Mat bb = it->boundingBoxMat();
+
                 // clang-format off
-                trackingResult << *frameCounter     << ", " 
-                                << it->id           << ", "
-                                << bb.tl().x        << ", "
-                                << bb.tl().y        << ", " 
-                                << bb.width         << ", " 
-                                << bb.height        << ", "
+                trackingResult << *frameCounter                        << ", " 
+                                << it->id                              << ", "
+                                << bb.at<double>(0)                    << ", "
+                                << bb.at<double>(1)                    << ", " 
+                                << bb.at<double>(2) - bb.at<double>(0) << ", " 
+                                << bb.at<double>(3) - bb.at<double>(1) << ", "
                                 << "1, "
                                 << "-1, "
                                 << "-1 ,"
@@ -219,7 +219,7 @@ bool Sort::isDead(Tracklet &track) {
 
 bool Sort::isCorrect(Tracklet &track) {
     if ((track.timeSinceUpdate < 1) &&
-        ((track.hitStreak >= minHits) || (hitCounter <= minHits))) {
+        ((track.hitStreak >= minHits) || (*frameCounter <= minHits))) {
         return true;
     }
     return false;
@@ -242,8 +242,8 @@ std::ostream &operator<<(std::ostream &os, Tracklet t) {
     os << "Tracklet: " << t.id << "\n"
        << "Time since update: " << t.timeSinceUpdate << " | "
        << "Hit streak hits: " << t.hitStreak << "\n"
-       << "State:\n"
-       << sortToDet(tmp, t.getState(), t.id).toBbMat().reshape(0, 1);
+       << "Bounding Box:\n"
+       << sortToDet(tmp, t.getState(), t.id).toBb();
     return os;
 }
 
@@ -391,26 +391,48 @@ void Sort::associateDetToTrack(std::vector<Metadata> &detections,
     // Iterate over matchedResult cols to have tuples of assignment and
     // indexes
     for (int col = 0; col < matchedResult.cols; col++) {
-        int assigned = matchedResult.col(col).at<int>(0); // idx du tracker
-        int idx      = matchedResult.col(col).at<int>(1); // idx de la detection
+        int idx      = matchedResult.col(col).at<int>(1); // detection idx
+        int assigned = matchedResult.col(col).at<int>(0); // tracker idx
 
         if (iouMat.at<double>(idx, assigned) < iouThreshold) {
             unmatchedDetection.push_back(detections.at(idx));
             unmatchedTrackers.push_back(assigned);
         } else {
-            std::vector<int> goodMatch = {idx, assigned}; //{detection, tracker}
+            std::vector<int> goodMatch = {idx, assigned};
             matched.push_back(goodMatch);
         }
     }
 
     // Final check for unmatched detections and trackers
-    for (int i = 0; i < detections.size(); i++) {
-        if (!findValueInMat<int>(assignment, i)) {
-            unmatchedTrackers.push_back(i);
+    // for (int i = 0; i < detections.size(); i++) {
+    //     if (!findValueInMat<int>(assignment, i)) {
+    //         unmatchedTrackers.push_back(i);
+    //     }
+    //     if (!findValueInMat<int>(indexes, i)) {
+    //         unmatchedDetection.push_back(detections.at(i));
+    //     }
+    // }
+
+    // Check if some detections where not matched, don't care about trackers
+    for (int i = 0; i < detectionsMat.rows; i++) {
+        bool found = false;
+        for (int j = 0; j < indexes.cols; j++) {
+            if (indexes.at<int>(j) == i) {
+                found = true;
+            }
         }
-        if (!findValueInMat<int>(indexes, i)) {
+        if (!found) {
             unmatchedDetection.push_back(detections.at(i));
         }
+    }
+}
+
+void Sort::printState() {
+    for (auto it = tracklets.begin(); it != tracklets.end(); it++) {
+        std::cout << *it << "\n---\n";
+        std::cout << "Current state:"
+                  << "\n";
+        std::cout << it->getState().reshape(0, 1) << "\n===\n";
     }
 }
 
@@ -438,11 +460,18 @@ Tracklet::~Tracklet() {}
 
 const cv::Scalar &Tracklet ::getColor() { return color; }
 
-// Returns a bounding box from latest predicted detection added to history
 cv::Rect Tracklet::boundingBox() {
-    cv::Mat currentState     = tracker->getState();
+    //  Get the predicted current state
+    cv::Mat currentState     = tracker->getState().reshape(0, 1);
     Metadata currentPosition = sortToDet(addedHistory.back(), currentState, id);
     return currentPosition.toBb();
+}
+
+cv::Mat Tracklet::boundingBoxMat() {
+    //  Get the predicted current state
+    cv::Mat currentState     = tracker->getState().reshape(0, 1);
+    Metadata currentPosition = sortToDet(addedHistory.back(), currentState, id);
+    return currentPosition.toBbMat();
 }
 
 const Metadata &Tracklet::prediction() {

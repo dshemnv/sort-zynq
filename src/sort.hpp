@@ -22,13 +22,14 @@ class Tracklet {
     int age;
     int timeSinceUpdate;
     cv::Rect boundingBox();
+    cv::Mat boundingBoxMat();
     const Metadata &prediction();
     const cv::Mat &getState();
     Metadata getLatestDetection();
     const cv::Scalar &getColor();
     void update(Metadata detection);
 };
-// TODO: Verify quality of tracking
+
 class Sort {
   private:
     int maxAge;
@@ -67,6 +68,7 @@ class Sort {
                              std::vector<int> &unmatchedTrackers,
                              std::vector<Metadata> &unmatchedDetections,
                              std::vector<std::vector<int>> &matched);
+    void printState();
     void clean();
 };
 

@@ -1,18 +1,13 @@
 #ifndef KALMAN_HPP
 #define KALMAN_HPP
 #include "utils.hpp"
-#ifdef KALMAN_ACCEL
-#include "kalman_hls_accel.hpp"
-#include "xcl2.hpp"
-#include "xf_kalmanfilter.hpp"
-#endif
 #ifndef KF_N
 #define KF_N 7
 #endif
 #ifndef KF_M
 #define KF_M 4
 #endif
-#if __INTELLISENSE__
+#if __INTELLISENSE__ // This is to fix VSCode intellisense
 #undef __ARM_NEON
 #undef __ARM_NEON__
 #endif
@@ -42,23 +37,6 @@ struct kalmanConfig {
         std::cout << R << std::endl;
     }
 };
-
-#ifdef KALMAN_ACCEL
-struct kalmanBuf {
-    enum destination { CV_MAT, DATA_PTR };
-    cv::Mat cv_mat;
-    size_t size;
-    cl::Buffer ocl_buffer;
-    double *data_ptr;
-    void extactData(destination dest) {
-        if (dest == DATA_PTR) {
-            mat2FloatPtr(&cv_mat, data_ptr);
-        } else if (dest == CV_MAT) {
-            floatPtr2Mat(&cv_mat, data_ptr);
-        };
-    };
-};
-#endif
 
 class KalmanBase {
   public:
@@ -261,65 +239,4 @@ class KalmanCreatorFactory : public KalmanCreator {
     KalmanBase *create() override { return new KALMAN_TYPE(); }
 };
 
-// template <size_t N_STATES, size_t N_MEAS>
-// class KalmanOCVCreator : public KalmanCreator {
-//   public:
-//     KalmanBase *create() const override {
-//         return new KalmanOCV<N_STATES, N_MEAS>();
-//     };
-//     ~KalmanOCVCreator(){};
-// };
-
-// template <size_t N_STATES, size_t N_MEAS>
-// class KalmanEigenCreator : public KalmanCreator {
-//   public:
-//     KalmanBase *create() const override {
-//         return new KalmanEigen<N_STATES, N_MEAS>();
-//     };
-//     ~KalmanEigenCreator(){};
-// };
-
-#ifdef KALMAN_ACCEL
-class KalmanHLS : public KalmanBase {
-  private:
-    kalmanBuf A;  // Transition matrix
-    kalmanBuf Uq; // Process Noice Covariance Matrix, U part
-    kalmanBuf Dq; // Process Noise Covariance Matrix, D part
-    kalmanBuf U0; // Process Noise Covariance MAtrix, U part, initial value
-    kalmanBuf D0; // Process Noise Covariance Matrix, D part, initial value
-    kalmanBuf X0; // State Matrix, initial value
-    kalmanBuf H;  // Measurement Matrix
-    kalmanBuf R;  // Measurement Noise Covariance Matrix
-    kalmanBuf y;  // Measurement vector
-
-    kalmanBuf outX; // Output State Matrix
-    kalmanBuf outU; // Output Error Estimate Covariance matrix, U part
-    kalmanBuf outD; // Output Error Estimate Covariance matrix, D part
-
-    cl::Kernel kernel;
-    cl::CommandQueue *queuePtr;
-    cl::Event *eventPtr;
-
-  public:
-    cl_int err;
-    KalmanHLS();
-    KalmanHLS(kalmanParams params);
-    ~KalmanHLS();
-    void init_accelerator(std::vector<cl::Device> &devices,
-                          cl::Context &context, cl::CommandQueue &queue,
-                          cl::Event &event);
-    void allocateBuffers(cl::Context &context);
-    void setKernelArgs();
-    void copyDataToDevice(cl::CommandQueue &queue, cl::Event &event);
-    void copyDataToHost(cl::CommandQueue &queue, cl::Event &event);
-    const cv::Mat &predict();
-    void update(detectionprops detection);
-    void load(kalmanConfig config);
-    void init(cv::Mat initialEstimateUncertainty);
-    void executeKernel(cl::CommandQueue &queue, const int &flag);
-    void printOutput();
-    void finish();
-    kalmanConfig dump();
-};
-#endif
 #endif

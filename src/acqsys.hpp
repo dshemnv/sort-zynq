@@ -3,7 +3,6 @@
 #include "utils.hpp"
 #include <opencv2/opencv.hpp>
 #include <opencv2/videoio.hpp>
-// #include <turbojpeg.h>
 
 class AqSys {
   protected:
@@ -50,19 +49,6 @@ class AqSysFiles : public AqSys {
     int &frameCounter();
     int size();
 };
-
-// class AqSysJPEGFiles : public AqSysFiles {
-//   private:
-//     std::vector<unsigned char *> rawImgBufers;
-
-//   public:
-//     AqSysJPEGFiles(const std::string &folder);
-//     AqSysJPEGFiles();
-//     ~AqSysJPEGFiles();
-//     void addImgFile(const std::string &path);
-//     void bailout(unsigned char *imgBuf, unsigned char *jpegBuf,
-//                  tjhandle tjInstance);
-// };
 
 class AqSysMOT : public AqSysFiles {
   private:

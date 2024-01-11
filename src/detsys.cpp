@@ -9,6 +9,7 @@ std::string vocLabels[20] = {
     "bus",         "car",     "cat",   "chair",     "cow",
     "diningtable", "dog",     "horse", "motorbike", "person",
     "pottedplant", "sheep",   "sofa",  "train",     "tvmonitor"};
+
 std::string cocoLabels[80] = {"person",        "bicycle",      "car",
                               "motorcycle",    "airplane",     "bus",
                               "train",         "truck",        "boat",
