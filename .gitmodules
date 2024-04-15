@@ -7,9 +7,6 @@
 [submodule "extern/vitis_ai"]
 	path = extern/vitis_ai
 	url = https://github.com/Xilinx/Vitis-AI
-[submodule "extern/auction"]
-	path = extern/auction
-	url = file:///home/dshem/Documents/these/ressources/papers/rapido2023/experiments/auction_c
 [submodule "extern/trackeval"]
 	path = extern/trackeval
 	url = https://github.com/JonathonLuiten/TrackEval
