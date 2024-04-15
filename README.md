@@ -19,7 +19,7 @@ Create a folder `sysroot` and extract the petalinux SDK to it.
 Use `make` to build the projet.
 
 ```bash
-HOST_ARCH=aarch65 make yolo-app
+HOST_ARCH=aarch64 make yolo-app
 ```
 The binary is then available under the `build` directory. Copy the binary to the Zynq device and run it there.
 
