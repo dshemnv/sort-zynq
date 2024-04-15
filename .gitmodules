@@ -13,3 +13,6 @@
 [submodule "extern/darknet"]
 	path = extern/darknet
 	url = https://github.com/AlexeyAB/darknet.git
+[submodule "extern/auction"]
+	path = extern/auction
+	url = git@github.com:dshemnv/auction.git
