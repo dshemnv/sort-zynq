@@ -101,8 +101,6 @@ void Sort::setTracker(KalmanCreator *tracker) { trackCreator = tracker; }
 void Sort::setFrameCounter(int &counter) { frameCounter = &counter; }
 
 void Sort::update(std::vector<Metadata> &detections) {
-    // FIXME: Some tracks shouldn't appear, comparison with the Python version
-    // doesn't match. Maybe check the condition line 310 in sort.py ?
     hitCounter += 1;
     assert(lsapSolver != nullptr);
     assert(trackCreator != nullptr);
@@ -360,7 +358,6 @@ void Sort::associateDetToTrack(std::vector<Metadata> &detections,
     // END DEBUG
 
     // Calculate IOU
-    // FIXME: Size mismatch
     cv::Mat iouMat = iou(detectionsMat, predictedPos);
 
     // if ((*frameCounter == 3) || (*frameCounter == 4) || (*frameCounter == 5))
