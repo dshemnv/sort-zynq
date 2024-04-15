@@ -1,4 +1,4 @@
-ifeq ($(filter clean clean-pkg clean-app, $(MAKECMDGOALS)),)
+ifeq ($(filter clean clean-pkg clean-app docs, $(MAKECMDGOALS)),)
 ifeq ($(filter aarch64 x86, $(HOST_ARCH)),)
 $(error [ERROR]: HOST_ARCH variable is not correctly set. Set it to x86 or aarch64)
 endif
@@ -211,6 +211,10 @@ yolo-app: app
 .PHONY: benchmark
 benchmark: app
 
+.PHONY: docs
+docs:
+	doxygen Doxyfile
+	make -C docs/doxygen/latex
 # .PHONY: accel
 # accel: $(XCLBIN_FILES)
 
